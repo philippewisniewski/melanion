@@ -36,7 +36,7 @@ enum MarkdownTableFormatter {
 
     // MARK: - Value formatting
 
-    private static func formatValue(_ value: Any, column: String) -> String {
+    static func formatValue(_ value: Any, column: String) -> String {
         let col = column.lowercased()
 
         // Pace columns — integer seconds → MM:SS/km
@@ -125,14 +125,14 @@ enum MarkdownTableFormatter {
 
     // MARK: - Type coercion helpers
 
-    private static func asInt(_ value: Any) -> Int? {
+    static func asInt(_ value: Any) -> Int? {
         if let i = value as? Int { return i }
         if let d = value as? Double { return Int(d) }
         if let s = value as? String { return Int(s) }
         return nil
     }
 
-    private static func asDouble(_ value: Any) -> Double? {
+    static func asDouble(_ value: Any) -> Double? {
         if let d = value as? Double { return d }
         if let i = value as? Int { return Double(i) }
         if let s = value as? String { return Double(s) }
