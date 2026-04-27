@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingProfileView: View {
     @Bindable var viewModel: OnboardingViewModel
+    @State private var showPermissions = false
 
     var body: some View {
         ZStack {
@@ -104,7 +105,7 @@ struct OnboardingProfileView: View {
                     }
 
                     Button {
-                        viewModel.advance()
+                        showPermissions = true
                     } label: {
                         Text("Continue")
                             .font(.headline)
@@ -120,7 +121,7 @@ struct OnboardingProfileView: View {
                 .background(Theme.background)
             }
         }
-        .fullScreenCover(isPresented: .constant(viewModel.currentPage == 2)) {
+        .fullScreenCover(isPresented: $showPermissions) {
             OnboardingPermissionsView(viewModel: viewModel)
         }
     }

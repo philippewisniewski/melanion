@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingWelcomeView: View {
     @State private var viewModel = OnboardingViewModel()
+    @State private var showProfile = false
 
     var body: some View {
         ZStack {
@@ -47,7 +48,7 @@ struct OnboardingWelcomeView: View {
                     .padding(.bottom, 8)
 
                     Button {
-                        viewModel.advance()
+                        showProfile = true
                     } label: {
                         Text("Get Started")
                             .font(.headline)
@@ -62,7 +63,7 @@ struct OnboardingWelcomeView: View {
                 .padding(.bottom, 48)
             }
         }
-        .fullScreenCover(isPresented: .constant(viewModel.currentPage == 1)) {
+        .fullScreenCover(isPresented: $showProfile) {
             OnboardingProfileView(viewModel: viewModel)
         }
     }

@@ -62,9 +62,9 @@ struct FirstLaunchSetupView: View {
 
                 if setupPhase == .complete {
                     Button {
-                        // hasCompletedOnboarding is already true — ContentView will switch to ChatView
-                        // Dismiss this sheet by removing it from the hierarchy
-                        UserDefaults.standard.set(true, forKey: "setupComplete")
+                        // Writing hasCompletedOnboarding flips ContentView to ChatView,
+                        // which dismisses the entire onboarding stack automatically.
+                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
                     } label: {
                         Text("Let's go")
                             .font(.headline)
@@ -94,6 +94,8 @@ struct FirstLaunchSetupView: View {
 
     private func runFullSetup() async {
         await runSeeding()
+        guard seedError == nil else { return }
+        withAnimation { setupPhase = .downloading }
         await runDownload()
     }
 
@@ -103,9 +105,6 @@ struct FirstLaunchSetupView: View {
         await pipeline.seed()
         if let error = pipeline.lastError {
             seedError = error
-        } else {
-            withAnimation { setupPhase = .downloading }
-            await runDownload()
         }
     }
 

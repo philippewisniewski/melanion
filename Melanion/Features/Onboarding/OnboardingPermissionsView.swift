@@ -97,7 +97,7 @@ struct OnboardingPermissionsView: View {
         errorMessage = nil
         do {
             try await HealthKitPermissionManager.shared.requestPermissions()
-            viewModel.saveAndFinish()
+            viewModel.profile.save()   // persist profile; hasCompletedOnboarding set after setup
             showSetup = true
         } catch {
             errorMessage = "Could not connect to Health: \(error.localizedDescription)"
