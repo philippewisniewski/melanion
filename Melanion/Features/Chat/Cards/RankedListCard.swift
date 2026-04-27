@@ -39,7 +39,8 @@ struct RankedListCard: View {
             let keys = row.keys.sorted()
             let labelKey = keys.first(where: {
                 $0.contains("date") || $0.contains("name") || $0.contains("pattern") ||
-                $0.contains("time") || $0.contains("season")
+                $0.contains("time") || $0.contains("season") || $0.contains("week") ||
+                $0.contains("month") || $0.contains("year") || $0.contains("hour")
             }) ?? keys.first ?? ""
             let valueKey = keys.first(where: { $0 != labelKey }) ?? ""
             return CardData.RankedRow(

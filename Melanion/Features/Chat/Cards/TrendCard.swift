@@ -68,7 +68,11 @@ struct TrendCard: View {
     }
 
     private var minValue: Double { (points.map(\.value).min() ?? 0) * 0.95 }
-    private var maxValue: Double { (points.map(\.value).max() ?? 1) * 1.05 }
+    private var maxValue: Double {
+        let raw = (points.map(\.value).max() ?? 1) * 1.05
+        // chartYScale domain must have positive length — guard against all-zero data
+        return raw > minValue ? raw : minValue + 1
+    }
 
     static func from(rows: [[String: Any?]], yAxisLabel: String = "") -> TrendCard {
         let keys = rows.first?.keys.sorted() ?? []
