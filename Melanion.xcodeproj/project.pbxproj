@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2881E1208CDCAA3728F9651D /* RecoveryBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A82AF1C2209D8D0A08A3C92 /* RecoveryBundle.swift */; };
+		2A533E4A56AB2A429732B58C /* BundledContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CEDBD83C6080E0AD1A96BD6 /* BundledContext.swift */; };
 		3549D2569761927AA0EDE2D2 /* RunRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9FC8EEBC1BDC3357720CD7 /* RunRecord.swift */; };
 		5FD7D0F5AAACBC05D1719601 /* ModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759204653C41CF5B1CC2669 /* ModelStore.swift */; };
 		668B488776FD97ACC804A4D8 /* RunWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FB9889E0038A7C393C4650 /* RunWorkout.swift */; };
@@ -18,6 +19,7 @@
 		82F8BE629207A246B6263BA8 /* MigrationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF0E01122DEB33E98BA5CCE /* MigrationPlan.swift */; };
 		851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */; };
 		9792086F3E1FE910C325CF16 /* HealthKitError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14507F037544F6D40078DB24 /* HealthKitError.swift */; };
+		9E00D0073779C94AC34A52DA /* biomechanics-reference.md in Resources */ = {isa = PBXBuildFile; fileRef = 4C8F90347293F187A6AF0685 /* biomechanics-reference.md */; };
 		A423EE6F2C92F0753065EDC1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E368DCB5AD1FD3486EDD43 /* Theme.swift */; };
 		ABD9E04C14CABC3244329D44 /* ResponseFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1BB854112531B9E04E1F35 /* ResponseFormat.swift */; };
 		C43D1D1DA747F35A2805B0DF /* ModelDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8411FFC0EBE030BC2D7CC77 /* ModelDownloadManager.swift */; };
@@ -25,6 +27,7 @@
 		C9FEF65055E1BA8E33FCC191 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8450FF9E922EE86CB0FF9D4 /* DatabaseManager.swift */; };
 		D0120D999D5E37CDAF333725 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F475F30DC94157B2274AF109 /* ContentView.swift */; };
 		E0926D1D6C3F0F3622F7C014 /* RecoveryRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE2F001E8B0B3012F37ABADB /* RecoveryRecord.swift */; };
+		E3D26BD722083AFB31D91FFE /* MarkdownTableFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B12F4D1EECB8C48C15C07C /* MarkdownTableFormatter.swift */; };
 		ED9C0D101B8A04CEA24AA965 /* RouteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61FC27CBF6AD04C0BC70D856 /* RouteData.swift */; };
 		EDCEA1ECAE3FF20D8397D5CC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C00FCD30F215A7129B383586 /* GRDB */; };
 		EDCEC2F11A0643D62C658139 /* HealthKitRecoveryFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B724D198BFBFD74A853436 /* HealthKitRecoveryFetcher.swift */; };
@@ -41,9 +44,11 @@
 		3A82AF1C2209D8D0A08A3C92 /* RecoveryBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryBundle.swift; sourceTree = "<group>"; };
 		3CB76F4E0249DAA35E5BBE25 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		444563FC8E2E53529BBC2D19 /* HealthKitWorkoutFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutFetcher.swift; sourceTree = "<group>"; };
+		4C8F90347293F187A6AF0685 /* biomechanics-reference.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "biomechanics-reference.md"; sourceTree = "<group>"; };
 		4D1BB854112531B9E04E1F35 /* ResponseFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseFormat.swift; sourceTree = "<group>"; };
 		5438318C2589048CEC8EE835 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		61FC27CBF6AD04C0BC70D856 /* RouteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteData.swift; sourceTree = "<group>"; };
+		7CEDBD83C6080E0AD1A96BD6 /* BundledContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundledContext.swift; sourceTree = "<group>"; };
 		7D132C082E768B41E9F8E975 /* Melanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Melanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		82FB9889E0038A7C393C4650 /* RunWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunWorkout.swift; sourceTree = "<group>"; };
 		8599272CAC541FF285FBCEE2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -55,6 +60,7 @@
 		C967ACADE1580BC7AC5FDC45 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelanionApp.swift; sourceTree = "<group>"; };
 		EFA1C5C6B5D957973187E823 /* HealthKitRouteFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitRouteFetcher.swift; sourceTree = "<group>"; };
+		F0B12F4D1EECB8C48C15C07C /* MarkdownTableFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTableFormatter.swift; sourceTree = "<group>"; };
 		F475F30DC94157B2274AF109 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F59FD10FC7E727A872156931 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		F759204653C41CF5B1CC2669 /* ModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelStore.swift; sourceTree = "<group>"; };
@@ -111,6 +117,8 @@
 		507BE5AD407E000E297CA3BC /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				7CEDBD83C6080E0AD1A96BD6 /* BundledContext.swift */,
+				F0B12F4D1EECB8C48C15C07C /* MarkdownTableFormatter.swift */,
 				36E368DCB5AD1FD3486EDD43 /* Theme.swift */,
 			);
 			path = Components;
@@ -211,6 +219,7 @@
 			isa = PBXGroup;
 			children = (
 				A8DC44AD9B6CA28B9F9B0A73 /* Assets.xcassets */,
+				4C8F90347293F187A6AF0685 /* biomechanics-reference.md */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -289,6 +298,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				753F1BD7AFA50C0839072C64 /* Assets.xcassets in Resources */,
+				9E00D0073779C94AC34A52DA /* biomechanics-reference.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +309,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A533E4A56AB2A429732B58C /* BundledContext.swift in Sources */,
 				D0120D999D5E37CDAF333725 /* ContentView.swift in Sources */,
 				C9FEF65055E1BA8E33FCC191 /* DatabaseManager.swift in Sources */,
 				9792086F3E1FE910C325CF16 /* HealthKitError.swift in Sources */,
@@ -306,6 +317,7 @@
 				EDCEC2F11A0643D62C658139 /* HealthKitRecoveryFetcher.swift in Sources */,
 				C9D337D527D74F320A686C2A /* HealthKitRouteFetcher.swift in Sources */,
 				735EAA0631DFB2F1F346ED70 /* HealthKitWorkoutFetcher.swift in Sources */,
+				E3D26BD722083AFB31D91FFE /* MarkdownTableFormatter.swift in Sources */,
 				851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */,
 				82F8BE629207A246B6263BA8 /* MigrationPlan.swift in Sources */,
 				C43D1D1DA747F35A2805B0DF /* ModelDownloadManager.swift in Sources */,
