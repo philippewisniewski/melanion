@@ -1,0 +1,467 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		753F1BD7AFA50C0839072C64 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8DC44AD9B6CA28B9F9B0A73 /* Assets.xcassets */; };
+		851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */; };
+		A423EE6F2C92F0753065EDC1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E368DCB5AD1FD3486EDD43 /* Theme.swift */; };
+		D0120D999D5E37CDAF333725 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F475F30DC94157B2274AF109 /* ContentView.swift */; };
+		EDCEA1ECAE3FF20D8397D5CC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C00FCD30F215A7129B383586 /* GRDB */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		092A464E3C3EDC63240CDBFB /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		3650C5E49561ADC955D0CABC /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		36DFBCE73684D80D3FD2908B /* Melanion.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Melanion.entitlements; sourceTree = "<group>"; };
+		36E368DCB5AD1FD3486EDD43 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		3CB76F4E0249DAA35E5BBE25 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		5438318C2589048CEC8EE835 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		7D132C082E768B41E9F8E975 /* Melanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Melanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8599272CAC541FF285FBCEE2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		9D0276F1DD05A35D444C6FF1 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		A8DC44AD9B6CA28B9F9B0A73 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C967ACADE1580BC7AC5FDC45 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelanionApp.swift; sourceTree = "<group>"; };
+		F475F30DC94157B2274AF109 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F59FD10FC7E727A872156931 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6025A50681C6162D778DD10B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EDCEA1ECAE3FF20D8397D5CC /* GRDB in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0523920E5C953B6C93A681A0 /* HealthKit */ = {
+			isa = PBXGroup;
+			children = (
+				3CB76F4E0249DAA35E5BBE25 /* .gitkeep */,
+			);
+			path = HealthKit;
+			sourceTree = "<group>";
+		};
+		0F31D5D143BCFE7064CAC9F0 /* Seeding */ = {
+			isa = PBXGroup;
+			children = (
+				3650C5E49561ADC955D0CABC /* .gitkeep */,
+			);
+			path = Seeding;
+			sourceTree = "<group>";
+		};
+		1FC4E42080A6D9AFE01CEDE5 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				092A464E3C3EDC63240CDBFB /* .gitkeep */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		507BE5AD407E000E297CA3BC /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				36E368DCB5AD1FD3486EDD43 /* Theme.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		54A5864C4C46F74EEE7BEAC9 = {
+			isa = PBXGroup;
+			children = (
+				BAFB05E544478F41DEF552B5 /* Melanion */,
+				8A7C03A495E1826A98AF0C25 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		61AF7E1FA79F6ACFA5E70B4E /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				65BA4C09310858DFB742BE29 /* Chat */,
+				FA169D4CC281489743E16D32 /* Onboarding */,
+				D37D3837922C997AC11CE230 /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		65BA4C09310858DFB742BE29 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				F59FD10FC7E727A872156931 /* .gitkeep */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		8A7C03A495E1826A98AF0C25 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7D132C082E768B41E9F8E975 /* Melanion.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		94345FD8B8AC97934C7715F9 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				F475F30DC94157B2274AF109 /* ContentView.swift */,
+				CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		97D8E6910D357780838D3C00 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				AB148009DCC7287D8BB0E4D9 /* Database */,
+				0523920E5C953B6C93A681A0 /* HealthKit */,
+				0F31D5D143BCFE7064CAC9F0 /* Seeding */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		AB148009DCC7287D8BB0E4D9 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				C967ACADE1580BC7AC5FDC45 /* .gitkeep */,
+			);
+			path = Database;
+			sourceTree = "<group>";
+		};
+		BAFB05E544478F41DEF552B5 /* Melanion */ = {
+			isa = PBXGroup;
+			children = (
+				8599272CAC541FF285FBCEE2 /* Info.plist */,
+				36DFBCE73684D80D3FD2908B /* Melanion.entitlements */,
+				94345FD8B8AC97934C7715F9 /* App */,
+				507BE5AD407E000E297CA3BC /* Components */,
+				97D8E6910D357780838D3C00 /* Data */,
+				61AF7E1FA79F6ACFA5E70B4E /* Features */,
+				1FC4E42080A6D9AFE01CEDE5 /* Models */,
+				DBC85360162DF8D5941BDE1B /* Resources */,
+			);
+			path = Melanion;
+			sourceTree = "<group>";
+		};
+		D37D3837922C997AC11CE230 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				5438318C2589048CEC8EE835 /* .gitkeep */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		DBC85360162DF8D5941BDE1B /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A8DC44AD9B6CA28B9F9B0A73 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		FA169D4CC281489743E16D32 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				9D0276F1DD05A35D444C6FF1 /* .gitkeep */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DA34713B5589D654D6E0C9AC /* Melanion */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C17282B445BC78BE4D66EF6 /* Build configuration list for PBXNativeTarget "Melanion" */;
+			buildPhases = (
+				45BF7E51D4D93B2D0A11D234 /* Sources */,
+				C2FA0D1473703DBAAB559E64 /* Resources */,
+				6025A50681C6162D778DD10B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Melanion;
+			packageProductDependencies = (
+				C00FCD30F215A7129B383586 /* GRDB */,
+			);
+			productName = Melanion;
+			productReference = 7D132C082E768B41E9F8E975 /* Melanion.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8FD91FDA51998C4BC02551EF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					DA34713B5589D654D6E0C9AC = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 7681784AA68F664F3CC78B10 /* Build configuration list for PBXProject "Melanion" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 54A5864C4C46F74EEE7BEAC9;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				60E01A66AAF1CB0858FC6130 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8A7C03A495E1826A98AF0C25 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DA34713B5589D654D6E0C9AC /* Melanion */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C2FA0D1473703DBAAB559E64 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				753F1BD7AFA50C0839072C64 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		45BF7E51D4D93B2D0A11D234 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0120D999D5E37CDAF333725 /* ContentView.swift in Sources */,
+				851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */,
+				A423EE6F2C92F0753065EDC1 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		85AD0FA5D578CEADE60094A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C2E0222574A05668D16F1DD3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Melanion/Melanion.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Melanion/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.philippewisniewski.melanion;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CD6737B61DD336E14B44AE09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Melanion/Melanion.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Melanion/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.philippewisniewski.melanion;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DDAF6EB434339A5AE55C5721 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2C17282B445BC78BE4D66EF6 /* Build configuration list for PBXNativeTarget "Melanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD6737B61DD336E14B44AE09 /* Debug */,
+				C2E0222574A05668D16F1DD3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7681784AA68F664F3CC78B10 /* Build configuration list for PBXProject "Melanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				85AD0FA5D578CEADE60094A8 /* Debug */,
+				DDAF6EB434339A5AE55C5721 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		60E01A66AAF1CB0858FC6130 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C00FCD30F215A7129B383586 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60E01A66AAF1CB0858FC6130 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 8FD91FDA51998C4BC02551EF /* Project object */;
+}

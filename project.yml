@@ -1,0 +1,42 @@
+name: Melanion
+options:
+  bundleIdPrefix: com.philippewisniewski
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  swift: "6.0"
+  createIntermediateGroups: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 7.0.0
+
+targets:
+  Melanion:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Melanion
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.philippewisniewski.melanion
+        SWIFT_VERSION: "6.0"
+        DEVELOPMENT_TEAM: ""
+        INFOPLIST_FILE: Melanion/Info.plist
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - package: GRDB
+    entitlements:
+      path: Melanion/Melanion.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    info:
+      path: Melanion/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: ""
+        NSHealthShareUsageDescription: "Melanion reads your running workouts to analyse pace, distance and heart rate trends."
+        NSHealthUpdateUsageDescription: "Melanion may write derived metrics back to HealthKit for reference."
