@@ -1,8 +1,8 @@
 import Foundation
 import GRDB
 
-/// A row of query results — keys are column names, values are SQL-typed values.
-typealias QueryRow = [String: DatabaseValueConvertible?]
+/// A row of query results — keys are column names, values are Any? for formatter compatibility.
+typealias QueryRow = [String: Any?]
 
 protocol QueryDefinition: Sendable {
     /// Unique snake_case identifier — the classifier routes to this name.

@@ -3,7 +3,7 @@ import GRDB
 
 struct TimeOfDayQuery: QueryDefinition {
     let name = "time_of_day"
-    let description = "Show run count and average pace grouped by time of day bracket: morning (5-9), midday (9-13), afternoon (13-17), evening (17-21), night (21-5)."
+    let description = "Show run count and average pace grouped by time of day bracket: morning (5-8), midday (9-12), afternoon (13-16), evening (17-20), night (21-4)."
     let format: ResponseFormat = .rankedList
 
     func execute(db: Database, params: [String: String]) throws -> [QueryRow] {
