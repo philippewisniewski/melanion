@@ -7,8 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		668B488776FD97ACC804A4D8 /* RunWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FB9889E0038A7C393C4650 /* RunWorkout.swift */; };
+		6F07460E351F31C8E5F7BA24 /* HealthKitPermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21092E0851B3054111F1907E /* HealthKitPermissionManager.swift */; };
+		735EAA0631DFB2F1F346ED70 /* HealthKitWorkoutFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444563FC8E2E53529BBC2D19 /* HealthKitWorkoutFetcher.swift */; };
 		753F1BD7AFA50C0839072C64 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8DC44AD9B6CA28B9F9B0A73 /* Assets.xcassets */; };
 		851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */; };
+		9792086F3E1FE910C325CF16 /* HealthKitError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14507F037544F6D40078DB24 /* HealthKitError.swift */; };
 		A423EE6F2C92F0753065EDC1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E368DCB5AD1FD3486EDD43 /* Theme.swift */; };
 		D0120D999D5E37CDAF333725 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F475F30DC94157B2274AF109 /* ContentView.swift */; };
 		EDCEA1ECAE3FF20D8397D5CC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C00FCD30F215A7129B383586 /* GRDB */; };
@@ -16,12 +20,16 @@
 
 /* Begin PBXFileReference section */
 		092A464E3C3EDC63240CDBFB /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		14507F037544F6D40078DB24 /* HealthKitError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitError.swift; sourceTree = "<group>"; };
+		21092E0851B3054111F1907E /* HealthKitPermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitPermissionManager.swift; sourceTree = "<group>"; };
 		3650C5E49561ADC955D0CABC /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		36DFBCE73684D80D3FD2908B /* Melanion.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Melanion.entitlements; sourceTree = "<group>"; };
 		36E368DCB5AD1FD3486EDD43 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3CB76F4E0249DAA35E5BBE25 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		444563FC8E2E53529BBC2D19 /* HealthKitWorkoutFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutFetcher.swift; sourceTree = "<group>"; };
 		5438318C2589048CEC8EE835 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		7D132C082E768B41E9F8E975 /* Melanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Melanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		82FB9889E0038A7C393C4650 /* RunWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunWorkout.swift; sourceTree = "<group>"; };
 		8599272CAC541FF285FBCEE2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9D0276F1DD05A35D444C6FF1 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		A8DC44AD9B6CA28B9F9B0A73 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -47,6 +55,9 @@
 			isa = PBXGroup;
 			children = (
 				3CB76F4E0249DAA35E5BBE25 /* .gitkeep */,
+				14507F037544F6D40078DB24 /* HealthKitError.swift */,
+				21092E0851B3054111F1907E /* HealthKitPermissionManager.swift */,
+				444563FC8E2E53529BBC2D19 /* HealthKitWorkoutFetcher.swift */,
 			);
 			path = HealthKit;
 			sourceTree = "<group>";
@@ -63,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				092A464E3C3EDC63240CDBFB /* .gitkeep */,
+				82FB9889E0038A7C393C4650 /* RunWorkout.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -252,7 +264,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				D0120D999D5E37CDAF333725 /* ContentView.swift in Sources */,
+				9792086F3E1FE910C325CF16 /* HealthKitError.swift in Sources */,
+				6F07460E351F31C8E5F7BA24 /* HealthKitPermissionManager.swift in Sources */,
+				735EAA0631DFB2F1F346ED70 /* HealthKitWorkoutFetcher.swift in Sources */,
 				851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */,
+				668B488776FD97ACC804A4D8 /* RunWorkout.swift in Sources */,
 				A423EE6F2C92F0753065EDC1 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
