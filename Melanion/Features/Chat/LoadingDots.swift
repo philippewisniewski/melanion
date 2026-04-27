@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LoadingDots: View {
-    @State private var phase: Int = 0
+    @State private var animating = false
 
     var body: some View {
         HStack(spacing: 5) {
@@ -9,12 +9,12 @@ struct LoadingDots: View {
                 Circle()
                     .fill(Theme.textSecondary)
                     .frame(width: 7, height: 7)
-                    .scaleEffect(phase == i ? 1.3 : 0.8)
+                    .scaleEffect(animating ? 1.3 : 0.8)
                     .animation(
-                        .easeInOut(duration: 0.4)
-                            .repeatForever()
-                            .delay(Double(i) * 0.15),
-                        value: phase
+                        .easeInOut(duration: 0.5)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(i) * 0.18),
+                        value: animating
                     )
             }
         }
@@ -22,6 +22,6 @@ struct LoadingDots: View {
         .padding(.vertical, 12)
         .background(Theme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .onAppear { phase = 1 }
+        .onAppear { animating = true }
     }
 }
