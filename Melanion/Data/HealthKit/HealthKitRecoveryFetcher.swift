@@ -57,8 +57,11 @@ struct HealthKitRecoveryFetcher: Sendable {
 
     private func fetchMetrics(period: RecoveryPeriod, in window: DateInterval) async -> RecoveryMetrics {
         async let sleep    = fetchSleepHours(in: window)
+        // Design decision: using most-recent HRV sample rather than window average.
+        // Apple Watch records HRV throughout sleep; averaging would be more representative
+        // but requires fetching all samples. Revisit if HRV data feels noisy.
         async let hrv      = fetchQuantity(.heartRateVariabilitySDNN,
-                                          unit: HKUnit(from: "ms"),
+                                          unit: HKUnit.secondUnit(with: .milli),
                                           in: window)
         async let rhr      = fetchQuantity(.restingHeartRate,
                                           unit: HKUnit.count().unitDivided(by: .minute()),
@@ -93,7 +96,8 @@ struct HealthKitRecoveryFetcher: Sendable {
             heartRateRecoveryBpm: hrrVal.map { Int($0) },
             respiratoryRate: respVal,
             wristTemperatureC: wristVal,
-            oxygenSaturationPct: spo2Val
+            // HealthKit returns SpO2 as a 0.0–1.0 fraction; multiply by 100 for percentage storage
+            oxygenSaturationPct: spo2Val.map { $0 * 100 }
         )
     }
 

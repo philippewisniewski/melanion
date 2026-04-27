@@ -1,6 +1,7 @@
 import HealthKit
 
-final class HealthKitPermissionManager: Sendable {
+// @unchecked Sendable: `store` is a `let` constant and HKHealthStore is documented as thread-safe.
+final class HealthKitPermissionManager: @unchecked Sendable {
     static let shared = HealthKitPermissionManager()
 
     let store = HKHealthStore()
