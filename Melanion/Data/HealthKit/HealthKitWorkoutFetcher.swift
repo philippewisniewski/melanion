@@ -67,22 +67,20 @@ struct HealthKitWorkoutFetcher {
         // Heart rate
         let hrUnit = HKUnit.count().unitDivided(by: .minute())
         let heartRateAvgBpm = workout.statistics(for: HKQuantityType(.heartRate))?
-            .averageQuantity()?
-            .doubleValue(for: hrUnit)
-            .map { Int($0) }
+            .averageQuantity()
+            .map { Int($0.doubleValue(for: hrUnit)) }
         let heartRateMinBpm = workout.statistics(for: HKQuantityType(.heartRate))?
-            .minimumQuantity()?
-            .doubleValue(for: hrUnit)
-            .map { Int($0) }
+            .minimumQuantity()
+            .map { Int($0.doubleValue(for: hrUnit)) }
         let heartRateMaxBpm = workout.statistics(for: HKQuantityType(.heartRate))?
-            .maximumQuantity()?
-            .doubleValue(for: hrUnit)
-            .map { Int($0) }
+            .maximumQuantity()
+            .map { Int($0.doubleValue(for: hrUnit)) }
 
         // NOTE: statistics(for: .stepCount) is only populated for workouts recorded directly
         // by Apple Watch. For third-party GPS watch imports (Garmin, COROS, Wahoo), this
         // returns nil. A future improvement could query per-sample runningGroundContactTime
         // over the workout's time range to derive cadence for all workout sources.
+        // Cadence (step count → steps per min)
         let stepCount = workout.statistics(for: HKQuantityType(.stepCount))?
             .sumQuantity()?
             .doubleValue(for: .count())
@@ -108,15 +106,13 @@ struct HealthKitWorkoutFetcher {
 
         // Power
         let runningPowerWatts = workout.statistics(for: HKQuantityType(.runningPower))?
-            .averageQuantity()?
-            .doubleValue(for: .watt())
-            .map { Int($0) }
+            .averageQuantity()
+            .map { Int($0.doubleValue(for: .watt())) }
 
         // Active calories
         let activeCaloriesKcal = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
-            .sumQuantity()?
-            .doubleValue(for: .kilocalorie())
-            .map { Int($0) }
+            .sumQuantity()
+            .map { Int($0.doubleValue(for: .kilocalorie())) }
 
         return RunWorkout(
             startedAt: workout.startDate,
@@ -136,4 +132,3 @@ struct HealthKitWorkoutFetcher {
         )
     }
 }
-
