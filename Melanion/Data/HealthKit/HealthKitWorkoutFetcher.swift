@@ -79,7 +79,10 @@ struct HealthKitWorkoutFetcher {
             .doubleValue(for: hrUnit)
             .map { Int($0) }
 
-        // Cadence (step count → steps per min)
+        // NOTE: statistics(for: .stepCount) is only populated for workouts recorded directly
+        // by Apple Watch. For third-party GPS watch imports (Garmin, COROS, Wahoo), this
+        // returns nil. A future improvement could query per-sample runningGroundContactTime
+        // over the workout's time range to derive cadence for all workout sources.
         let stepCount = workout.statistics(for: HKQuantityType(.stepCount))?
             .sumQuantity()?
             .doubleValue(for: .count())
@@ -93,11 +96,11 @@ struct HealthKitWorkoutFetcher {
         // Running form metrics
         let groundContactTimeMs = workout.statistics(for: HKQuantityType(.runningGroundContactTime))?
             .averageQuantity()?
-            .doubleValue(for: HKUnit(from: "ms"))
+            .doubleValue(for: HKUnit.secondUnit(with: .milli))
 
         let verticalOscillationCm = workout.statistics(for: HKQuantityType(.runningVerticalOscillation))?
             .averageQuantity()?
-            .doubleValue(for: HKUnit(from: "cm"))
+            .doubleValue(for: HKUnit.meterUnit(with: .centi))
 
         let strideLengthMetres = workout.statistics(for: HKQuantityType(.runningStrideLength))?
             .averageQuantity()?
@@ -134,10 +137,3 @@ struct HealthKitWorkoutFetcher {
     }
 }
 
-// MARK: - Double convenience
-
-private extension Double {
-    func map<T>(_ transform: (Double) -> T) -> T {
-        transform(self)
-    }
-}
