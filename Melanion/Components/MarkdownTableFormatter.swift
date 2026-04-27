@@ -6,7 +6,7 @@ enum MarkdownTableFormatter {
     /// Returns an empty string if rows is empty.
     static func format(_ rows: [[String: Any?]]) -> String {
         guard let first = rows.first else { return "" }
-        let columns = Array(first.keys)
+        let columns = first.keys.sorted()
 
         var lines: [String] = []
         // Header row
