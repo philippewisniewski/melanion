@@ -70,6 +70,13 @@ enum MigrationPlan {
             try db.create(index: "idx_splits_run_id",       on: "route_splits", columns: ["run_id"])
         }
 
+        // A unique index on (run_id, period) lets INSERT OR REPLACE correctly handle
+        // re-seeding without duplicating recovery rows per run per period.
+        migrator.registerMigration("v2_recovery_unique_period") { db in
+            try db.create(index: "idx_recovery_run_period", on: "recovery",
+                          columns: ["run_id", "period"], unique: true)
+        }
+
         return migrator
     }
 }
