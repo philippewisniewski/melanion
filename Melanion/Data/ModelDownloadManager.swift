@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class ModelDownloadManager: NSObject {
     // MARK: - Published state
@@ -20,6 +21,7 @@ final class ModelDownloadManager: NSObject {
     // MARK: - Private
     private var downloadTask: URLSessionDownloadTask?
     private var resumeData: Data?
+    // Implicitly unwrapped: URLSession requires `self` as delegate during init (two-phase init).
     private var urlSession: URLSession!
 
     // MARK: - Init
@@ -58,7 +60,7 @@ final class ModelDownloadManager: NSObject {
 
 // MARK: - URLSessionDownloadDelegate
 extension ModelDownloadManager: URLSessionDownloadDelegate {
-    func urlSession(
+    nonisolated func urlSession(
         _ session: URLSession,
         downloadTask: URLSessionDownloadTask,
         didWriteData bytesWritten: Int64,
@@ -76,7 +78,7 @@ extension ModelDownloadManager: URLSessionDownloadDelegate {
         }
     }
 
-    func urlSession(
+    nonisolated func urlSession(
         _ session: URLSession,
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
@@ -97,7 +99,7 @@ extension ModelDownloadManager: URLSessionDownloadDelegate {
         }
     }
 
-    func urlSession(
+    nonisolated func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
         didCompleteWithError error: Error?

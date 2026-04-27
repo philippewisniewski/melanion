@@ -48,18 +48,15 @@ struct HealthKitRouteFetcher: Sendable {
     private func fetchWorkoutRoute(for workout: HKWorkout) async -> HKWorkoutRoute? {
         let predicate = HKQuery.predicateForObjects(from: workout)
 
+        // One-shot form of HKAnchoredObjectQuery (no updateHandler) fires the completionHandler
+        // exactly once, so no double-resume guard is needed.
         return await withCheckedContinuation { continuation in
-            var resumed = false
-
             let query = HKAnchoredObjectQuery(
                 type: HKSeriesType.workoutRoute(),
                 predicate: predicate,
                 anchor: nil,
                 limit: HKObjectQueryNoLimit
             ) { _, samples, _, _, error in
-                guard !resumed else { return }
-                resumed = true
-
                 if error != nil {
                     continuation.resume(returning: nil)
                     return
@@ -75,25 +72,30 @@ struct HealthKitRouteFetcher: Sendable {
     // MARK: - CLLocation stream
 
     private func fetchLocations(from route: HKWorkoutRoute) async -> [CLLocation]? {
-        return await withCheckedContinuation { continuation in
+        // Box mutable state to satisfy Swift 6 Sendable requirements.
+        // HealthKit delivers route callbacks serially on its own queue, so no lock is needed —
+        // @unchecked Sendable is safe here because we rely on that guarantee.
+        final class RouteState: @unchecked Sendable {
             var accumulated: [CLLocation] = []
-            var resumed = false
+            var hasResumed = false
+        }
+        let state = RouteState()
 
+        return await withCheckedContinuation { continuation in
             let query = HKWorkoutRouteQuery(route: route) { _, locations, done, error in
-                if let error {
-                    if !resumed {
-                        resumed = true
-                        continuation.resume(returning: nil)
-                    }
+                if error != nil {
+                    guard !state.hasResumed else { return }
+                    state.hasResumed = true
+                    continuation.resume(returning: nil)
                     return
                 }
                 if let locations {
-                    accumulated.append(contentsOf: locations)
+                    state.accumulated.append(contentsOf: locations)
                 }
                 if done {
-                    guard !resumed else { return }
-                    resumed = true
-                    continuation.resume(returning: accumulated.isEmpty ? nil : accumulated)
+                    guard !state.hasResumed else { return }
+                    state.hasResumed = true
+                    continuation.resume(returning: state.accumulated.isEmpty ? nil : state.accumulated)
                 }
             }
             store.execute(query)
@@ -135,6 +137,9 @@ struct HealthKitRouteFetcher: Sendable {
                 splitElevLoss += abs(altDelta)
             }
 
+            // NOTE: If a GPS gap spans more than 1 km (tunnel, indoor, signal loss), this produces
+            // a split with near-zero elapsed time. Acceptable for outdoor running data; consumers
+            // should filter splits with elapsed < 30s as likely GPS artefacts.
             if cumulativeDistance >= Double(kmNumber) * threshold {
                 let elapsed = locations[i].timestamp.timeIntervalSince(splitStartTime)
                 splits.append(KmSplit(

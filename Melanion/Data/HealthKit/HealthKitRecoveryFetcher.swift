@@ -141,10 +141,14 @@ struct HealthKitRecoveryFetcher: Sendable {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
             return nil
         }
+        // options: [] captures any sample overlapping the window, not just those fully contained.
+        // Strictly containing the endDate would exclude a typical 22:30–07:00 sleep session
+        // from the night_before window (which ends at 06:00), silently returning nil.
+        // Each sample's duration is clipped to the window to avoid double-counting overlap.
         let predicate = HKQuery.predicateForSamples(
             withStart: window.start,
             end: window.end,
-            options: [.strictStartDate, .strictEndDate]
+            options: []
         )
 
         return await withCheckedContinuation { continuation in
@@ -167,13 +171,13 @@ struct HealthKitRecoveryFetcher: Sendable {
                 let totalSeconds = samples
                     .compactMap { $0 as? HKCategorySample }
                     .filter { asleepValues.contains($0.value) }
-                    .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+                    .reduce(0.0) { total, sample in
+                        let clippedStart = max(sample.startDate, window.start)
+                        let clippedEnd   = min(sample.endDate, window.end)
+                        return total + max(0, clippedEnd.timeIntervalSince(clippedStart))
+                    }
 
-                if totalSeconds == 0 {
-                    continuation.resume(returning: nil)
-                } else {
-                    continuation.resume(returning: totalSeconds / 3600.0)
-                }
+                continuation.resume(returning: totalSeconds > 0 ? totalSeconds / 3600.0 : nil)
             }
             store.execute(query)
         }
