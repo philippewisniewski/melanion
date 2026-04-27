@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0706B607C967B1A872B8CCE0 /* SeedingPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DA00107BE2AC4D7A6E71AD /* SeedingPipeline.swift */; };
 		2881E1208CDCAA3728F9651D /* RecoveryBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A82AF1C2209D8D0A08A3C92 /* RecoveryBundle.swift */; };
 		3549D2569761927AA0EDE2D2 /* RunRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9FC8EEBC1BDC3357720CD7 /* RunRecord.swift */; };
 		5FD7D0F5AAACBC05D1719601 /* ModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759204653C41CF5B1CC2669 /* ModelStore.swift */; };
@@ -32,6 +33,7 @@
 
 /* Begin PBXFileReference section */
 		092A464E3C3EDC63240CDBFB /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		12DA00107BE2AC4D7A6E71AD /* SeedingPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedingPipeline.swift; sourceTree = "<group>"; };
 		14507F037544F6D40078DB24 /* HealthKitError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitError.swift; sourceTree = "<group>"; };
 		21092E0851B3054111F1907E /* HealthKitPermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitPermissionManager.swift; sourceTree = "<group>"; };
 		282551319AB6CBEF18880D30 /* RouteSplitRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteSplitRecord.swift; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				3650C5E49561ADC955D0CABC /* .gitkeep */,
+				12DA00107BE2AC4D7A6E71AD /* SeedingPipeline.swift */,
 			);
 			path = Seeding;
 			sourceTree = "<group>";
@@ -317,6 +320,7 @@
 				74DA7989320A69441731DFCF /* RouteSplitRecord.swift in Sources */,
 				3549D2569761927AA0EDE2D2 /* RunRecord.swift in Sources */,
 				668B488776FD97ACC804A4D8 /* RunWorkout.swift in Sources */,
+				0706B607C967B1A872B8CCE0 /* SeedingPipeline.swift in Sources */,
 				A423EE6F2C92F0753065EDC1 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
