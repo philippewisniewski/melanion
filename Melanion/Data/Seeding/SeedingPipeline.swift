@@ -96,8 +96,10 @@ final class SeedingPipeline {
         try await db.write { database in
             for (index, (runRecord, bundle, route)) in preparedRecords.enumerated() {
                 do {
-                    // Upsert on started_at (the unique column)
-                    try runRecord.upsert(database)
+                    // INSERT OR REPLACE on started_at (the UNIQUE column).
+                    // upsert() targets the PK, not started_at, so it cannot resolve that
+                    // constraint — use insert(onConflict: .replace) instead.
+                    try runRecord.insert(database, onConflict: .replace)
                     let savedRun = try RunRecord
                         .filter(Column("started_at") == runRecord.startedAt)
                         .fetchOne(database)!
@@ -123,7 +125,10 @@ final class SeedingPipeline {
                         }
                     }
 
-                    // Write route splits — delete existing first, then insert fresh
+                    // Write route splits — delete existing first, then insert fresh.
+                    // INSERT OR REPLACE on the parent run cascades a delete of child splits,
+                    // so this deleteAll is redundant when FK cascades are active (they are),
+                    // but kept as a safeguard in case FKs are disabled in a test environment.
                     if let route {
                         try RouteSplitRecord
                             .filter(Column("run_id") == runId)
