@@ -19,6 +19,8 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Melanion
+    resources:
+      - path: Melanion/Resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.philippewisniewski.melanion
