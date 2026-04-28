@@ -4,19 +4,29 @@ struct MessageBubble: View {
     let message: ChatMessage
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            if message.role == .user { Spacer(minLength: 48) }
+        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 0) {
+                if message.role == .user { Spacer(minLength: 48) }
 
-            Text(message.content)
-                .font(.subheadline)
-                .foregroundStyle(textColor)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(bubbleColor)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+                Text(message.content)
+                    .font(.subheadline)
+                    .foregroundStyle(textColor)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(bubbleColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
 
-            if message.role != .user { Spacer(minLength: 48) }
+                if message.role != .user { Spacer(minLength: 48) }
+            }
+
+            // Card rendered below assistant bubble when data is available
+            if message.role == .assistant,
+               let format = message.responseFormat,
+               let rows = message.cardRows,
+               !rows.isEmpty {
+                CardView(format: format, rows: rows)
+            }
         }
     }
 

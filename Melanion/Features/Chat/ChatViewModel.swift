@@ -1,5 +1,6 @@
-import SwiftUI
+import Foundation
 import GRDB
+import FoundationModels
 import Observation
 
 @Observable
@@ -9,31 +10,99 @@ final class ChatViewModel {
     var messages: [ChatMessage] = []
     var inputText: String = ""
     var isLoading: Bool = false
+    var statusLabel: String = ""
+    var canRetry: Bool = false
 
-    // Conversation history — passed to LLM pipeline in Stage 4
-    private(set) var history: [ConversationTurn] = []
-    private let maxHistory = 20
+    private var lastQuestion: String = ""
+    private let classifier = ClassifierPipeline()
+    private let responder = ResponderPipeline()
 
     // MARK: - Send
 
-    func send() async {
+    func send(using service: LanguageModelService) async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isLoading else { return }
         inputText = ""
+        canRetry = false
+        lastQuestion = text
+        await run(question: text, using: service)
+    }
 
-        messages.append(ChatMessage(role: .user, content: text))
+    func retry(using service: LanguageModelService) async {
+        guard !lastQuestion.isEmpty, !isLoading else { return }
+        // Remove the last error bubble before retrying
+        if messages.last?.role == .error { messages.removeLast() }
+        await run(question: lastQuestion, using: service)
+    }
+
+    // MARK: - Core pipeline
+
+    private func run(question: String, using service: LanguageModelService) async {
+        messages.append(ChatMessage(role: .user, content: question))
         isLoading = true
+        statusLabel = "Thinking…"
 
-        // Stage 4 will replace this stub with the real CoreML pipeline
         do {
-            let response = try await stubbedResponse(for: text)
-            messages.append(ChatMessage(role: .assistant, content: response.answer, responseFormat: response.format))
-            trimHistory()
-            history.append(ConversationTurn(question: text, answer: response.answer))
+            // Step 1 — Classify
+            let (definition, params) = try await classifier.classify(question: question, using: service)
+
+            // Step 2 — Execute SQL query
+            statusLabel = "Querying your data…"
+            let rows: [[String: Any?]]
+            do {
+                rows = try await DatabaseManager.shared.db.read { db in
+                    try definition.execute(db: db, params: params)
+                }
+            } catch {
+                print("[ChatViewModel] SQL error: \(error)")
+                appendError("Something went wrong querying your data.")
+                reset()
+                return
+            }
+
+            // Step 3 — Format Markdown table
+            let markdownTable = MarkdownTableFormatter.format(rows)
+
+            // Step 4 — Stream response
+            statusLabel = "Generating response…"
+            var assistantMessage = ChatMessage(role: .assistant, content: "")
+            messages.append(assistantMessage)
+            let messageId = assistantMessage.id
+
+            let stream = responder.respond(
+                question: question,
+                markdownTable: markdownTable,
+                format: definition.format,
+                using: service
+            )
+
+            for await partial in stream {
+                if let idx = messages.firstIndex(where: { $0.id == messageId }) {
+                    messages[idx].content = partial   // replace — each partial is a full snapshot
+                }
+            }
+
+            // Step 5 — Attach card data (or show error if stream produced nothing)
+            if let idx = messages.firstIndex(where: { $0.id == messageId }) {
+                if messages[idx].content.isEmpty {
+                    messages.remove(at: idx)
+                    appendError("I couldn't generate a response.")
+                    canRetry = true
+                } else {
+                    messages[idx].responseFormat = definition.format
+                    messages[idx].cardRows = rows
+                }
+            }
+
+        } catch is ClassifierError {
+            appendError("I couldn't understand that — try rephrasing your question.")
+        } catch LanguageModelSession.GenerationError.exceededContextWindowSize {
+            appendError("Your data was too large to process. Try a more specific question.")
         } catch {
-            messages.append(ChatMessage(role: .error, content: error.localizedDescription))
+            appendError("I couldn't understand that — try rephrasing your question.")
         }
-        isLoading = false
+
+        reset()
     }
 
     // MARK: - Welcome data
@@ -66,35 +135,20 @@ final class ChatViewModel {
             guard let date = formatter.date(from: dateStr) else { continue }
             let day = Calendar.current.startOfDay(for: date)
             let diff = Calendar.current.dateComponents([.day], from: day, to: expected).day ?? 999
-            if diff <= 1 {
-                streak += 1
-                expected = day
-            } else { break }
+            if diff <= 1 { streak += 1; expected = day } else { break }
         }
         return streak
     }
 
-    // MARK: - History management
+    // MARK: - Helpers
 
-    private func trimHistory() {
-        if history.count >= maxHistory {
-            history.removeFirst()
-        }
+    private func appendError(_ message: String) {
+        messages.append(ChatMessage(role: .error, content: message))
     }
 
-    // MARK: - Stub (replaced in Stage 4)
-
-    private struct StubResponse {
-        let answer: String
-        let format: ResponseFormat
-    }
-
-    private func stubbedResponse(for question: String) async throws -> StubResponse {
-        try await Task.sleep(for: .seconds(1.2))
-        return StubResponse(
-            answer: "I can see you asked: \"\(question)\". The AI pipeline will be connected in Stage 4 — your data layer is fully wired and ready.",
-            format: .stat
-        )
+    private func reset() {
+        isLoading = false
+        statusLabel = ""
     }
 }
 
