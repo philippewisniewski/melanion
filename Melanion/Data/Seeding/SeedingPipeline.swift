@@ -233,8 +233,8 @@ final class SeedingPipeline {
     private func computePacingPattern(from splits: [KmSplit]) -> String? {
         guard splits.count >= 2 else { return nil }
         let half = splits.count / 2
-        let firstHalfAvg = splits[..<half].map(\.splitSeconds).reduce(0, +) / half
-        let secondHalfAvg = splits[half...].map(\.splitSeconds).reduce(0, +) / (splits.count - half)
+        let firstHalfAvg = Double(splits[..<half].map(\.splitSeconds).reduce(0, +)) / Double(half)
+        let secondHalfAvg = Double(splits[half...].map(\.splitSeconds).reduce(0, +)) / Double(splits.count - half)
         let diff = secondHalfAvg - firstHalfAvg
         if diff < -5 { return "negative" }
         if diff > 5  { return "positive" }

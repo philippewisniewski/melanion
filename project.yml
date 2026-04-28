@@ -2,8 +2,8 @@ name: Melanion
 options:
   bundleIdPrefix: com.philippewisniewski
   deploymentTarget:
-    iOS: "18.0"
-  xcodeVersion: "16.0"
+    iOS: "26.0"
+  xcodeVersion: "16.3"
   swift: "6.0"
   createIntermediateGroups: true
 
@@ -16,7 +16,7 @@ targets:
   Melanion:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Melanion
     resources:
@@ -42,3 +42,14 @@ targets:
           UIColorName: ""
         NSHealthShareUsageDescription: "Melanion reads your running workouts to analyse pace, distance and heart rate trends."
         NSHealthUpdateUsageDescription: "Melanion may write derived metrics back to HealthKit for reference."
+
+  MelanionTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources: MelanionTests
+    dependencies:
+      - target: Melanion
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"

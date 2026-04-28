@@ -58,9 +58,20 @@ enum MarkdownTableFormatter {
             if let val = asInt(value) { return "\(val) bpm" }
         }
 
-        // Distance — append km
+        // Date columns — convert to readable string
+        if col.contains("date") {
+            if let str = value as? String { return formatDate(str) }
+        }
+
+        // Distance — km or mi based on user profile
         if col.contains("distance_km") {
-            if let val = asDouble(value) { return String(format: "%.2f km", val) }
+            if let val = asDouble(value) {
+                let profile = UserProfile.load()
+                if profile.preferredUnits == .miles {
+                    return String(format: "%.2f mi", val * 0.621371)
+                }
+                return String(format: "%.2f km", val)
+            }
         }
 
         // Elevation — append m
@@ -100,6 +111,26 @@ enum MarkdownTableFormatter {
 
         // Default — just stringify
         return "\(value)"
+    }
+
+    // MARK: - Date formatting
+
+    private static func formatDate(_ raw: String) -> String {
+        let inputFormatter = DateFormatter()
+        inputFormatter.locale = Locale(identifier: "en_US_POSIX")
+        let date: Date?
+        if raw.contains("T") {
+            inputFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+            date = inputFormatter.date(from: raw)
+        } else {
+            inputFormatter.dateFormat = "yyyy-MM-dd"
+            date = inputFormatter.date(from: raw)
+        }
+        guard let d = date else { return raw }
+        let out = DateFormatter()
+        out.dateFormat = "d MMM yyyy"
+        out.locale = Locale(identifier: "en_US_POSIX")
+        return out.string(from: d)
     }
 
     // MARK: - Unit helpers (reusable by card components)

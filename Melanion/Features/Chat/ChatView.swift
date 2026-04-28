@@ -1,11 +1,12 @@
 import SwiftUI
 
 struct ChatView: View {
+    @Environment(LanguageModelService.self) private var languageModelService
     @State private var viewModel = ChatViewModel()
     @State private var welcomeData: WelcomeData?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Theme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -15,6 +16,11 @@ struct ChatView: View {
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
+                    NavigationLink(destination: SettingsView()) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -22,7 +28,7 @@ struct ChatView: View {
 
                 Divider().background(Theme.surface)
 
-                // Message list
+                // Message list + input using safeAreaInset
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
@@ -44,15 +50,23 @@ struct ChatView: View {
                             }
 
                             if viewModel.isLoading {
-                                LoadingDots()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 16)
-                                    .id("loading")
+                                VStack(alignment: .leading, spacing: 6) {
+                                    if !viewModel.statusLabel.isEmpty {
+                                        Text(viewModel.statusLabel)
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.textSecondary)
+                                            .padding(.horizontal, 16)
+                                    }
+                                    LoadingDots()
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 16)
+                                }
+                                .id("loading")
                             }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 100)
                         .padding(.top, 16)
+                        .padding(.bottom, 8)
                     }
                     .onChange(of: viewModel.messages.count) {
                         withAnimation {
@@ -67,15 +81,18 @@ struct ChatView: View {
                         }
                     }
                 }
-            }
-
-            // Input pinned to bottom
-            PromptInput(text: $viewModel.inputText, isLoading: viewModel.isLoading) {
-                Task { await viewModel.send() }
+                .safeAreaInset(edge: .bottom) {
+                    PromptInput(text: $viewModel.inputText, isLoading: viewModel.isLoading) {
+                        Task { await viewModel.send(using: languageModelService) }
+                    }
+                }
             }
         }
+        .ignoresSafeArea(.keyboard)
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             welcomeData = await viewModel.fetchWelcome()
+            languageModelService.prewarm()
         }
     }
 }

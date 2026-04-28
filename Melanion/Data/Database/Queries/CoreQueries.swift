@@ -131,12 +131,16 @@ struct HRThresholdQuery: QueryDefinition {
 
     func execute(db: Database, params: [String: String]) throws -> [QueryRow] {
         let bpm = Int(params["bpm"] ?? "160") ?? 160
-        let direction = params["direction"] ?? "above"
-        let op = direction == "above" ? ">" : "<"
-        let sql = """
+        let above = (params["direction"] ?? "above") == "above"
+        let sql = above ? """
             SELECT date, distance_km, pace_seconds, heart_rate_avg_bpm
             FROM runs
-            WHERE heart_rate_avg_bpm \(op) ?
+            WHERE heart_rate_avg_bpm > ?
+            ORDER BY heart_rate_avg_bpm ASC
+            """ : """
+            SELECT date, distance_km, pace_seconds, heart_rate_avg_bpm
+            FROM runs
+            WHERE heart_rate_avg_bpm < ?
             ORDER BY heart_rate_avg_bpm ASC
             """
         return try Row.fetchAll(db, sql: sql, arguments: [bpm]).map { row in

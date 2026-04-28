@@ -2,13 +2,12 @@ import SwiftUI
 
 struct FirstLaunchSetupView: View {
     @State private var pipeline = SeedingPipeline()
-    @State private var downloader = ModelDownloadManager()
+    @Environment(IntelligenceGate.self) private var gate
     @State private var setupPhase: SetupPhase = .idle
     @State private var seedError: String?
-    @State private var downloadError: String?
 
     enum SetupPhase {
-        case idle, seeding, downloading, complete
+        case idle, seeding, checkingAI, complete
     }
 
     var body: some View {
@@ -47,13 +46,11 @@ struct FirstLaunchSetupView: View {
                     )
 
                     SetupStepRow(
-                        icon: "cpu",
-                        label: "Download AI model",
-                        subLabel: downloadSubLabel,
-                        state: stepState(for: .downloading),
-                        progress: downloader.downloadProgress,
-                        errorMessage: downloadError,
-                        onRetry: { downloader.startDownload() }
+                        icon: "brain",
+                        label: "Check AI model",
+                        subLabel: aiSubLabel,
+                        state: stepState(for: .checkingAI),
+                        progress: nil
                     )
                 }
                 .padding(.horizontal, 24)
@@ -62,8 +59,6 @@ struct FirstLaunchSetupView: View {
 
                 if setupPhase == .complete {
                     Button {
-                        // Writing hasCompletedOnboarding flips ContentView to ChatView,
-                        // which dismisses the entire onboarding stack automatically.
                         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
                     } label: {
                         Text("Let's go")
@@ -81,13 +76,6 @@ struct FirstLaunchSetupView: View {
             }
         }
         .task { await runFullSetup() }
-        .onChange(of: downloader.state) { _, newState in
-            if newState == .complete {
-                withAnimation { setupPhase = .complete }
-            } else if case .failed(let msg) = newState {
-                downloadError = msg
-            }
-        }
     }
 
     // MARK: - Setup orchestration
@@ -95,8 +83,10 @@ struct FirstLaunchSetupView: View {
     private func runFullSetup() async {
         await runSeeding()
         guard seedError == nil else { return }
-        withAnimation { setupPhase = .downloading }
-        await runDownload()
+        withAnimation { setupPhase = .checkingAI }
+        // Gate check is near-instant — give it a brief moment to feel intentional
+        try? await Task.sleep(for: .milliseconds(600))
+        withAnimation { setupPhase = .complete }
     }
 
     private func runSeeding() async {
@@ -106,15 +96,6 @@ struct FirstLaunchSetupView: View {
         if let error = pipeline.lastError {
             seedError = error
         }
-    }
-
-    private func runDownload() async {
-        downloadError = nil
-        if ModelStore.isModelDownloaded {
-            withAnimation { setupPhase = .complete }
-            return
-        }
-        downloader.startDownload()
     }
 
     // MARK: - Computed helpers
@@ -135,24 +116,22 @@ struct FirstLaunchSetupView: View {
         return Double(p.processed) / Double(p.total)
     }
 
-    private var downloadSubLabel: String? {
-        guard downloader.totalBytes > 0 else { return nil }
-        let downloaded = ByteCountFormatter.string(fromByteCount: downloader.downloadedBytes, countStyle: .file)
-        let total = ByteCountFormatter.string(fromByteCount: downloader.totalBytes, countStyle: .file)
-        return "\(downloaded) of \(total)"
+    private var aiSubLabel: String? {
+        guard setupPhase == .checkingAI || setupPhase == .complete else { return nil }
+        if gate.isAvailable { return "Ready" }
+        return gate.unavailableReason
     }
 
     private func stepState(for phase: SetupPhase) -> SetupStepRow.StepState {
         switch phase {
         case .idle: return .pending
         case .seeding:
-            if setupPhase == .seeding { return pipeline.isRunning ? .active : (seedError != nil ? .failed : .complete) }
-            if setupPhase == .downloading || setupPhase == .complete { return .complete }
-            return .pending
-        case .downloading:
-            if setupPhase == .downloading {
-                return downloadError != nil ? .failed : .active
+            if setupPhase == .seeding {
+                return pipeline.isRunning ? .active : (seedError != nil ? .failed : .complete)
             }
+            return (setupPhase == .checkingAI || setupPhase == .complete) ? .complete : .pending
+        case .checkingAI:
+            if setupPhase == .checkingAI { return .active }
             if setupPhase == .complete { return .complete }
             return .pending
         case .complete: return .pending
@@ -242,10 +221,10 @@ struct SetupStepRow: View {
 
     private var labelColor: Color {
         switch state {
-        case .pending: return Theme.textSecondary
-        case .active:  return Theme.textPrimary
+        case .pending:  return Theme.textSecondary
+        case .active:   return Theme.textPrimary
         case .complete: return Theme.accent
-        case .failed:  return .red
+        case .failed:   return .red
         }
     }
 }
