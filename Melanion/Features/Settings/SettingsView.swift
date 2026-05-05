@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var profile = UserProfile.load()
+    @State private var notifSettings = NotificationSettings.load()
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -27,6 +28,14 @@ struct SettingsView: View {
                     SettingsSection(title: "Preferences") {
                         SettingsPicker(label: "Units", selection: $profile.preferredUnits)
                     }
+
+                    SettingsSection(title: "Notifications") {
+                        SettingsToggle(label: "Run complete", isOn: $notifSettings.runComplete)
+                        SettingsToggle(label: "Personal bests", isOn: $notifSettings.personalBest)
+                        SettingsToggle(label: "Weekly trend", isOn: $notifSettings.weeklyTrend)
+                        SettingsToggle(label: "Recovery nudge", isOn: $notifSettings.recoveryNudge)
+                        SettingsToggle(label: "Streak milestones", isOn: $notifSettings.streakMilestone)
+                    }
                 }
                 .padding(24)
             }
@@ -47,6 +56,18 @@ struct SettingsView: View {
         .onChange(of: profile.goal) { profile.save() }
         .onChange(of: profile.experienceLevel) { profile.save() }
         .onChange(of: profile.preferredUnits) { profile.save() }
+        .onChange(of: notifSettings.runComplete) { requestPermissionIfAnyEnabled() }
+        .onChange(of: notifSettings.personalBest) { requestPermissionIfAnyEnabled() }
+        .onChange(of: notifSettings.weeklyTrend) { requestPermissionIfAnyEnabled() }
+        .onChange(of: notifSettings.recoveryNudge) { requestPermissionIfAnyEnabled() }
+        .onChange(of: notifSettings.streakMilestone) { requestPermissionIfAnyEnabled() }
+    }
+
+    private func requestPermissionIfAnyEnabled() {
+        notifSettings.save()
+        let s = notifSettings
+        guard s.runComplete || s.personalBest || s.weeklyTrend || s.recoveryNudge || s.streakMilestone else { return }
+        Task { await NotificationService.shared.requestPermissionIfNeeded() }
     }
 }
 
@@ -121,6 +142,27 @@ where T.RawValue == String, T.AllCases: RandomAccessCollection {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
+            Divider().background(Theme.background).padding(.leading, 16)
+        }
+    }
+}
+
+private struct SettingsToggle: View {
+    let label: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Toggle("", isOn: $isOn)
+                    .tint(Theme.accent)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             Divider().background(Theme.background).padding(.leading, 16)
         }
     }

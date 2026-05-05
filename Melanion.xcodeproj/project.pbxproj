@@ -64,6 +64,9 @@
 		EDCEA1ECAE3FF20D8397D5CC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C00FCD30F215A7129B383586 /* GRDB */; };
 		EDCEC2F11A0643D62C658139 /* HealthKitRecoveryFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B724D198BFBFD74A853436 /* HealthKitRecoveryFetcher.swift */; };
 		FD26A3C83CA3519329476EA0 /* DatabaseMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6698DF7EB0E5B496941E8CE /* DatabaseMigrationTests.swift */; };
+		FB000001FB000001FB000001 /* NotificationSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000001FA000001FA000001 /* NotificationSettings.swift */; };
+		FB000002FB000002FB000002 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000002FA000002FA000002 /* NotificationService.swift */; };
+		FB000003FB000003FB000003 /* MilestoneDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000003FA000003FA000003 /* MilestoneDetector.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -144,6 +147,9 @@
 		FC9FC8EEBC1BDC3357720CD7 /* RunRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunRecord.swift; sourceTree = "<group>"; };
 		FE2F001E8B0B3012F37ABADB /* RecoveryRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryRecord.swift; sourceTree = "<group>"; };
 		FE6026FCC97576DA83121854 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		FA000001FA000001FA000001 /* NotificationSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettings.swift; sourceTree = "<group>"; };
+		FA000002FA000002FA000002 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		FA000003FA000003FA000003 /* MilestoneDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneDetector.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -217,10 +223,21 @@
 			children = (
 				89EE34933254A6031BC694E4 /* IntelligenceUnavailableView.swift */,
 				65BA4C09310858DFB742BE29 /* Chat */,
+				CA000001CA000001CA000001 /* Notifications */,
 				FA169D4CC281489743E16D32 /* Onboarding */,
 				D37D3837922C997AC11CE230 /* Settings */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		CA000001CA000001CA000001 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				FA000003FA000003FA000003 /* MilestoneDetector.swift */,
+				FA000002FA000002FA000002 /* NotificationService.swift */,
+				FA000001FA000001FA000001 /* NotificationSettings.swift */,
+			);
+			path = Notifications;
 			sourceTree = "<group>";
 		};
 		65BA4C09310858DFB742BE29 /* Chat */ = {
@@ -516,6 +533,9 @@
 				CAE6E040AB8B54A47DDC7722 /* TrendQueries.swift in Sources */,
 				6FC5D21708AEC60C50AB16D7 /* UserProfile.swift in Sources */,
 				6D5C33FD0C7517459794D160 /* WelcomeCard.swift in Sources */,
+				FB000001FB000001FB000001 /* NotificationSettings.swift in Sources */,
+				FB000002FB000002FB000002 /* NotificationService.swift in Sources */,
+				FB000003FB000003FB000003 /* MilestoneDetector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
