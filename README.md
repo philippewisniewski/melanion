@@ -8,7 +8,7 @@ A personal running coach and analytics app that lives entirely on your iPhone. A
 
 Melanion reads your complete running history from Apple Health and stores it in a local SQLite database. When you ask a question in plain English ("What's my best 10km pace this year?" / "How does my sleep affect my next-day pace?"), the app routes it to the right SQL query, executes it, and generates a coached narrative response — all on-device using Apple Intelligence.
 
-The result is a chat interface where every answer is grounded in your actual data, formatted as text with a typed data card below it.
+The result is a chat interface where every answer is grounded in your actual data, formatted as text with a typed data card below it. The app also surfaces proactive coaching moments as local notifications — new personal bests, streak milestones, trend improvements, and recovery nudges — without any cloud infrastructure.
 
 ---
 
@@ -233,8 +233,56 @@ Melanion checks `SystemLanguageModel.default.availability` at the app root and s
 | `runs` | One row per workout — pace, distance, HR, form metrics, GPS metadata |
 | `recovery` | Three rows per run — HRV, sleep, resting HR across night_before / run_day / day_after |
 | `route_splits` | Per-km split times and elevation for runs with GPS data |
+| `notified_milestones` | One row per fired notification event — prevents any milestone firing more than once across re-seeds |
 
 The schema mirrors the original TypeScript `running-agent` exactly, enabling the same 25 SQL queries to work without translation. All column names are snake_case; GRDB's `DatabaseColumnDecodingStrategy.convertFromSnakeCase` maps them automatically to camelCase Swift properties.
+
+---
+
+## Notifications
+
+Melanion delivers proactive coaching moments as **local notifications** — no push certificates, no server, no cloud. Everything is handled by `UNUserNotificationCenter` on-device, consistent with the app's zero-infrastructure philosophy.
+
+### When notifications fire
+
+Notifications are evaluated inside a single GRDB write transaction at the end of every HealthKit sync (`MilestoneDetector.evaluateAfterSync()`). Each event writes a row to `notified_milestones` so it never fires more than once, even across re-seeds.
+
+| Category | Trigger |
+|---|---|
+| **Run complete** | Any run with a start time within the last 24 hours |
+| **All-time pace PB** | Sync produces a new fastest-ever run |
+| **Distance bracket PB** | Fastest 5 km, 10 km, half-marathon, or marathon |
+| **Longest run ever** | New all-time distance record |
+| **Streak milestones** | 7, 14, 30, 50, and 100 consecutive running days |
+| **Run count milestones** | 10th, 25th, 50th, 100th, and 250th total run |
+| **Welcome back** | First run after a gap of more than 14 days |
+| **Weekly pace trend** | Average pace improved >3% vs the prior 4-week window — scheduled as a `UNCalendarNotificationTrigger` for next Monday at 08:00 |
+| **Recovery nudge** | Hard run (high HR, >15 km, or >200 m elevation) followed by HRV dropping >15% below the 30-day baseline — scheduled for the next morning at 07:00 |
+
+### Architecture
+
+```
+SeedingPipeline.seed()
+    │  (after successful DB write)
+    ▼
+MilestoneDetector.evaluateAfterSync()
+    │  (single GRDB write transaction)
+    ├─ query runs + notified_milestones
+    ├─ detect events, mark keys as fired
+    └─ return [NotificationPayload]
+    │
+    ▼
+NotificationService.schedule(_:)
+    │  (UNUserNotificationCenter)
+    ▼
+Local notification delivered when app is backgrounded
+```
+
+**`NotificationService`** is a singleton registered as `UNUserNotificationCenterDelegate` at app launch. The `willPresent` delegate method suppresses banners while the app is in the foreground — the user is already in the app, so there's no need to interrupt them.
+
+### User settings
+
+All five notification categories are individually toggle-able in **Settings → Notifications**. The OS permission sheet is requested only when the user enables their first toggle, never at cold launch.
 
 ---
 
