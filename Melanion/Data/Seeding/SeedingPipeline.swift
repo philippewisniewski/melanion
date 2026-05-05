@@ -69,6 +69,9 @@ final class SeedingPipeline {
             )
             progress = SeedingProgress(phase: .complete, total: total, processed: total)
 
+            // Step 5 — Detect milestones and schedule notifications
+            await MilestoneDetector.shared.evaluateAfterSync()
+
         } catch {
             lastError = error.localizedDescription
         }

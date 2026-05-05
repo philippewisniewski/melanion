@@ -77,6 +77,15 @@ enum MigrationPlan {
                           columns: ["run_id", "period"], unique: true)
         }
 
+        // Tracks which milestone notifications have already been delivered so they
+        // never fire more than once even across re-seeds.
+        migrator.registerMigration("v3_notified_milestones") { db in
+            try db.create(table: "notified_milestones") { t in
+                t.primaryKey("key", .text)
+                t.column("fired_at", .text).notNull()
+            }
+        }
+
         return migrator
     }
 }
