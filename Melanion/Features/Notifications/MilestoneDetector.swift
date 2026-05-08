@@ -1,20 +1,35 @@
 import Foundation
-import GRDB
 
-// Detects run milestones after each HealthKit sync and schedules local notifications.
-// Uses the notified_milestones table to ensure each event fires at most once.
 final class MilestoneDetector: @unchecked Sendable {
     static let shared = MilestoneDetector()
     private init() {}
 
+    private static let notifiedKey = "melanion_notified_milestones"
+
     // MARK: - Entry point
 
     func evaluateAfterSync() async {
-        let now = ISO8601DateFormatter().string(from: Date())
         do {
-            let payloads = try await DatabaseManager.shared.db.write { db -> [NotificationPayload] in
-                try Self.detect(in: db, now: now)
+            let workouts = try await HealthKitWorkoutFetcher().fetchRunningWorkouts()
+            guard let latest = workouts.first else { return }
+
+            var notified = Self.loadNotified()
+            var payloads: [NotificationPayload] = []
+
+            if let p = Self.checkRunComplete(latest: latest, notified: &notified) { payloads.append(p) }
+            if let p = Self.checkPacePB(latest: latest, workouts: workouts, notified: &notified) { payloads.append(p) }
+            payloads += Self.checkDistanceBracketPBs(latest: latest, workouts: workouts, notified: &notified)
+            if let p = Self.checkLongestRun(latest: latest, workouts: workouts, notified: &notified) { payloads.append(p) }
+            payloads += Self.checkStreakMilestones(workouts: workouts, notified: &notified)
+            if let p = Self.checkRunCountMilestone(count: workouts.count, notified: &notified) { payloads.append(p) }
+            if let p = Self.checkWeeklyTrend(workouts: workouts, notified: &notified) { payloads.append(p) }
+
+            if let p = await Self.checkRecoveryNudge(latest: latest, workouts: workouts, notified: &notified) {
+                payloads.append(p)
             }
+
+            Self.saveNotified(notified)
+
             guard !payloads.isEmpty else { return }
             let settings = NotificationSettings.load()
             for payload in payloads where Self.isEnabled(payload.category, in: settings) {
@@ -23,61 +38,33 @@ final class MilestoneDetector: @unchecked Sendable {
         } catch { }
     }
 
-    // MARK: - Detection (synchronous, runs inside GRDB write closure)
+    // MARK: - Dedup persistence (UserDefaults)
 
-    private static func detect(in db: Database, now: String) throws -> [NotificationPayload] {
-        var payloads: [NotificationPayload] = []
+    private static func loadNotified() -> Set<String> {
+        let array = UserDefaults.standard.stringArray(forKey: notifiedKey) ?? []
+        return Set(array)
+    }
 
-        // Load all already-notified keys in one pass.
-        let notified = Set<String>(
-            try Row.fetchAll(db, sql: "SELECT key FROM notified_milestones").compactMap { $0["key"] as? String }
-        )
+    private static func saveNotified(_ keys: Set<String>) {
+        UserDefaults.standard.set(Array(keys), forKey: notifiedKey)
+    }
 
-        guard let latest = try RunRecord.order(Column("started_at").desc).fetchOne(db) else {
-            return payloads
-        }
-
-        // Run complete (only for runs within the last 24 hours)
-        if let p = try checkRunComplete(latest: latest, db: db, notified: notified, now: now) { payloads.append(p) }
-
-        // All-time pace PB
-        if let p = try checkPacePB(latest: latest, db: db, notified: notified, now: now) { payloads.append(p) }
-
-        // Per-bracket distance PBs (5 k, 10 k, half, marathon)
-        payloads += try checkDistanceBracketPBs(latest: latest, db: db, notified: notified, now: now)
-
-        // Longest run PB (by distance)
-        if let p = try checkLongestRun(latest: latest, db: db, notified: notified, now: now) { payloads.append(p) }
-
-        // Streak milestones and welcome-back
-        payloads += try checkStreakMilestones(db: db, notified: notified, now: now)
-
-        // Run count milestones
-        if let p = try checkRunCountMilestone(db: db, notified: notified, now: now) { payloads.append(p) }
-
-        // Weekly pace trend (schedule for next Monday morning)
-        if let p = try checkWeeklyTrend(db: db, notified: notified, now: now) { payloads.append(p) }
-
-        // Recovery nudge (hard run + suppressed HRV)
-        if let p = try checkRecoveryNudge(latest: latest, db: db, notified: notified, now: now) { payloads.append(p) }
-
-        return payloads
+    private static func mark(key: String, notified: inout Set<String>) {
+        notified.insert(key)
     }
 
     // MARK: - Run complete
 
     private static func checkRunComplete(
-        latest: RunRecord, db: Database, notified: Set<String>, now: String
-    ) throws -> NotificationPayload? {
-        let key = "run_complete_\(latest.startedAt)"
+        latest: RunWorkout, notified: inout Set<String>
+    ) -> NotificationPayload? {
+        let key = "run_complete_\(isoString(latest.startedAt))"
         guard !notified.contains(key) else { return nil }
 
-        // Only notify for runs that started within the last 24 hours.
         let cutoff = Date().addingTimeInterval(-86_400)
-        let cutoffStr = ISO8601DateFormatter().string(from: cutoff)
-        guard latest.startedAt > cutoffStr else { return nil }
+        guard latest.startedAt > cutoff else { return nil }
 
-        try mark(key: key, now: now, in: db)
+        mark(key: key, notified: &notified)
         let dist = String(format: "%.1f km", latest.distanceKm)
         let pace = formatPace(latest.paceSeconds)
         return NotificationPayload(
@@ -91,38 +78,21 @@ final class MilestoneDetector: @unchecked Sendable {
     // MARK: - All-time pace PB
 
     private static func checkPacePB(
-        latest: RunRecord, db: Database, notified: Set<String>, now: String
-    ) throws -> NotificationPayload? {
-        let key = "pb_pace_alltime_\(latest.startedAt)"
+        latest: RunWorkout, workouts: [RunWorkout], notified: inout Set<String>
+    ) -> NotificationPayload? {
+        let key = "pb_pace_alltime_\(isoString(latest.startedAt))"
         guard !notified.contains(key) else { return nil }
+        guard workouts.count > 1 else { return nil }
 
-        // Get the fastest run ever; if it's the latest, it's a new PB.
-        guard let bestRow = try Row.fetchOne(db, sql: """
-            SELECT started_at, pace_seconds FROM runs
-            ORDER BY pace_seconds ASC, started_at DESC
-            LIMIT 1
-            """) else { return nil }
+        let fastest = workouts.min(by: { $0.paceSeconds < $1.paceSeconds })
+        guard fastest?.startedAt == latest.startedAt else { return nil }
 
-        let bestStartedAt: String = bestRow["started_at"] ?? ""
-        guard bestStartedAt == latest.startedAt else { return nil }
-
-        // Also confirm there was a prior run to beat (otherwise it's just the first run).
-        let runCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM runs") ?? 0
-        guard runCount > 1 else { return nil }
-
-        // Find the previous best pace (second fastest).
-        guard let prevRow = try Row.fetchOne(db, sql: """
-            SELECT pace_seconds FROM runs
-            WHERE started_at != ?
-            ORDER BY pace_seconds ASC
-            LIMIT 1
-            """, arguments: [latest.startedAt]) else { return nil }
-
-        let prevPace: Int = prevRow["pace_seconds"] ?? latest.paceSeconds
-        let diff = prevPace - latest.paceSeconds
+        let prevBest = workouts.filter { $0.startedAt != latest.startedAt }
+            .min(by: { $0.paceSeconds < $1.paceSeconds })
+        let diff = (prevBest?.paceSeconds ?? latest.paceSeconds) - latest.paceSeconds
         let improvStr = diff > 0 ? " — \(formatPace(diff)) faster than your previous best." : "."
 
-        try mark(key: key, now: now, in: db)
+        mark(key: key, notified: &notified)
         return NotificationPayload(
             id: key,
             title: "New all-time pace PB",
@@ -141,31 +111,21 @@ final class MilestoneDetector: @unchecked Sendable {
     ]
 
     private static func checkDistanceBracketPBs(
-        latest: RunRecord, db: Database, notified: Set<String>, now: String
-    ) throws -> [NotificationPayload] {
+        latest: RunWorkout, workouts: [RunWorkout], notified: inout Set<String>
+    ) -> [NotificationPayload] {
         var payloads: [NotificationPayload] = []
         for bracket in distanceBrackets {
             guard latest.distanceKm >= bracket.min && latest.distanceKm < bracket.max else { continue }
-            let key = "pb_pace_\(bracket.label.replacingOccurrences(of: " ", with: "_"))_\(latest.startedAt)"
+            let key = "pb_pace_\(bracket.label.replacingOccurrences(of: " ", with: "_"))_\(isoString(latest.startedAt))"
             guard !notified.contains(key) else { continue }
 
-            guard let bestRow = try Row.fetchOne(db, sql: """
-                SELECT started_at FROM runs
-                WHERE distance_km >= ? AND distance_km < ?
-                ORDER BY pace_seconds ASC, started_at DESC
-                LIMIT 1
-                """, arguments: [bracket.min, bracket.max]) else { continue }
+            let inBracket = workouts.filter { $0.distanceKm >= bracket.min && $0.distanceKm < bracket.max }
+            guard inBracket.count > 1 else { continue }
 
-            let bestStartedAt: String = bestRow["started_at"] ?? ""
-            guard bestStartedAt == latest.startedAt else { continue }
+            let fastest = inBracket.min(by: { $0.paceSeconds < $1.paceSeconds })
+            guard fastest?.startedAt == latest.startedAt else { continue }
 
-            // Require at least one prior run in the bracket to beat.
-            let bracketCount = try Int.fetchOne(db, sql: """
-                SELECT COUNT(*) FROM runs WHERE distance_km >= ? AND distance_km < ?
-                """, arguments: [bracket.min, bracket.max]) ?? 0
-            guard bracketCount > 1 else { continue }
-
-            try mark(key: key, now: now, in: db)
+            mark(key: key, notified: &notified)
             payloads.append(NotificationPayload(
                 id: key,
                 title: "New \(bracket.label) PB",
@@ -179,24 +139,16 @@ final class MilestoneDetector: @unchecked Sendable {
     // MARK: - Longest run PB
 
     private static func checkLongestRun(
-        latest: RunRecord, db: Database, notified: Set<String>, now: String
-    ) throws -> NotificationPayload? {
-        let key = "pb_distance_alltime_\(latest.startedAt)"
+        latest: RunWorkout, workouts: [RunWorkout], notified: inout Set<String>
+    ) -> NotificationPayload? {
+        let key = "pb_distance_alltime_\(isoString(latest.startedAt))"
         guard !notified.contains(key) else { return nil }
+        guard workouts.count > 1 else { return nil }
 
-        guard let farthestRow = try Row.fetchOne(db, sql: """
-            SELECT started_at, distance_km FROM runs
-            ORDER BY distance_km DESC, started_at DESC
-            LIMIT 1
-            """) else { return nil }
+        let farthest = workouts.max(by: { $0.distanceKm < $1.distanceKm })
+        guard farthest?.startedAt == latest.startedAt else { return nil }
 
-        let farthestStartedAt: String = farthestRow["started_at"] ?? ""
-        guard farthestStartedAt == latest.startedAt else { return nil }
-
-        let runCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM runs") ?? 0
-        guard runCount > 1 else { return nil }
-
-        try mark(key: key, now: now, in: db)
+        mark(key: key, notified: &notified)
         let dist = String(format: "%.1f km", latest.distanceKm)
         return NotificationPayload(
             id: key,
@@ -211,26 +163,18 @@ final class MilestoneDetector: @unchecked Sendable {
     private static let streakThresholds = [7, 14, 30, 50, 100]
 
     private static func checkStreakMilestones(
-        db: Database, notified: Set<String>, now: String
-    ) throws -> [NotificationPayload] {
+        workouts: [RunWorkout], notified: inout Set<String>
+    ) -> [NotificationPayload] {
         var payloads: [NotificationPayload] = []
+        let cal = Calendar(identifier: .gregorian)
+        let dates = Set(workouts.map { cal.startOfDay(for: $0.startedAt) }).sorted(by: >)
+        guard !dates.isEmpty else { return payloads }
 
-        let rows = try Row.fetchAll(db, sql: "SELECT DISTINCT date FROM runs ORDER BY date DESC")
-        let dateStrings: [String] = rows.compactMap { $0["date"] }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        let calendar = Calendar(identifier: .gregorian)
-
-        let dates: [Date] = dateStrings.compactMap { formatter.date(from: $0) }.sorted(by: >)
-
-        // Current streak
         var currentStreak = 0
-        var cursor = calendar.startOfDay(for: Date())
+        var cursor = cal.startOfDay(for: Date())
         for date in dates {
-            let d = calendar.startOfDay(for: date)
-            if d == cursor || d == calendar.date(byAdding: .day, value: -1, to: cursor)! {
+            let d = cal.startOfDay(for: date)
+            if d == cursor || d == cal.date(byAdding: .day, value: -1, to: cursor)! {
                 currentStreak += 1
                 cursor = d
             } else {
@@ -241,7 +185,7 @@ final class MilestoneDetector: @unchecked Sendable {
         for threshold in streakThresholds where currentStreak == threshold {
             let key = "streak_\(threshold)"
             guard !notified.contains(key) else { continue }
-            try mark(key: key, now: now, in: db)
+            mark(key: key, notified: &notified)
             payloads.append(NotificationPayload(
                 id: key,
                 title: "Streak milestone",
@@ -250,15 +194,15 @@ final class MilestoneDetector: @unchecked Sendable {
             ))
         }
 
-        // Welcome back: latest two distinct dates separated by > 14 days
         if dates.count >= 2 {
             let latest = dates[0]
             let previous = dates[1]
-            let gap = calendar.dateComponents([.day], from: previous, to: latest).day ?? 0
-            let latestStr = formatter.string(from: latest)
-            let key = "return_from_gap_\(latestStr)"
+            let gap = cal.dateComponents([.day], from: previous, to: latest).day ?? 0
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            let key = "return_from_gap_\(formatter.string(from: latest))"
             if gap > 14 && !notified.contains(key) {
-                try mark(key: key, now: now, in: db)
+                mark(key: key, notified: &notified)
                 payloads.append(NotificationPayload(
                     id: key,
                     title: "Welcome back",
@@ -276,13 +220,12 @@ final class MilestoneDetector: @unchecked Sendable {
     private static let countThresholds = [10, 25, 50, 100, 250]
 
     private static func checkRunCountMilestone(
-        db: Database, notified: Set<String>, now: String
-    ) throws -> NotificationPayload? {
-        let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM runs") ?? 0
+        count: Int, notified: inout Set<String>
+    ) -> NotificationPayload? {
         for threshold in countThresholds where count == threshold {
             let key = "run_count_\(threshold)"
             guard !notified.contains(key) else { return nil }
-            try mark(key: key, now: now, in: db)
+            mark(key: key, notified: &notified)
             return NotificationPayload(
                 id: key,
                 title: "Milestone",
@@ -296,34 +239,31 @@ final class MilestoneDetector: @unchecked Sendable {
     // MARK: - Weekly pace trend
 
     private static func checkWeeklyTrend(
-        db: Database, notified: Set<String>, now: String
-    ) throws -> NotificationPayload? {
-        let calendar = Calendar(identifier: .gregorian)
-        let weekOfYear = calendar.component(.weekOfYear, from: Date())
-        let year = calendar.component(.year, from: Date())
+        workouts: [RunWorkout], notified: inout Set<String>
+    ) -> NotificationPayload? {
+        let cal = Calendar(identifier: .gregorian)
+        let weekOfYear = cal.component(.weekOfYear, from: Date())
+        let year = cal.component(.year, from: Date())
         let key = "weekly_trend_\(year)_W\(weekOfYear)"
         guard !notified.contains(key) else { return nil }
 
-        // Average pace: last 4 weeks vs. prior 4 weeks.
-        let rows = try Row.fetchAll(db, sql: """
-            SELECT
-                ROUND(AVG(CASE WHEN started_at >= datetime('now', '-4 weeks') THEN pace_seconds END)) AS recent_avg,
-                ROUND(AVG(CASE WHEN started_at < datetime('now', '-4 weeks')
-                               AND started_at >= datetime('now', '-8 weeks') THEN pace_seconds END)) AS prior_avg
-            FROM runs
-            """)
-        guard let row = rows.first,
-              let recentAvg = row["recent_avg"] as? Double,
-              let priorAvg = row["prior_avg"] as? Double,
-              priorAvg > 0, recentAvg > 0 else { return nil }
+        let now = Date()
+        let fourWeeksAgo = cal.date(byAdding: .weekOfYear, value: -4, to: now)!
+        let eightWeeksAgo = cal.date(byAdding: .weekOfYear, value: -8, to: now)!
 
-        // Improvement means pace went DOWN (fewer seconds/km).
+        let recent = workouts.filter { $0.startedAt >= fourWeeksAgo }
+        let prior = workouts.filter { $0.startedAt >= eightWeeksAgo && $0.startedAt < fourWeeksAgo }
+
+        guard !recent.isEmpty, !prior.isEmpty else { return nil }
+        let recentAvg = Double(recent.map(\.paceSeconds).reduce(0, +)) / Double(recent.count)
+        let priorAvg = Double(prior.map(\.paceSeconds).reduce(0, +)) / Double(prior.count)
+        guard priorAvg > 0, recentAvg > 0 else { return nil }
+
         let improvePct = (priorAvg - recentAvg) / priorAvg * 100
         guard improvePct >= 3 else { return nil }
 
-        try mark(key: key, now: now, in: db)
+        mark(key: key, notified: &notified)
 
-        // Schedule for next Monday at 08:00.
         var components = DateComponents()
         components.weekday = 2
         components.hour = 8
@@ -340,12 +280,11 @@ final class MilestoneDetector: @unchecked Sendable {
     // MARK: - Recovery nudge
 
     private static func checkRecoveryNudge(
-        latest: RunRecord, db: Database, notified: Set<String>, now: String
-    ) throws -> NotificationPayload? {
-        let key = "recovery_nudge_\(latest.startedAt)"
+        latest: RunWorkout, workouts: [RunWorkout], notified: inout Set<String>
+    ) async -> NotificationPayload? {
+        let key = "recovery_nudge_\(isoString(latest.startedAt))"
         guard !notified.contains(key) else { return nil }
 
-        // Determine if the latest run qualifies as "hard".
         let profile = UserProfile.load()
         let maxHR = profile.maxHeartRate ?? 190
         let hrHard = (latest.heartRateAvgBpm ?? 0) > Int(Double(maxHR) * 0.85)
@@ -353,32 +292,25 @@ final class MilestoneDetector: @unchecked Sendable {
         let elevHard = (latest.elevationGainMetres ?? 0) > 200
         guard hrHard || distHard || elevHard else { return nil }
 
-        // Compare run-day HRV against the 30-day baseline.
-        guard let latestRunId = latest.id else { return nil }
-        guard let hrvRow = try Row.fetchOne(db, sql: """
-            SELECT hrv_ms FROM recovery
-            WHERE run_id = ? AND period = 'run_day' AND hrv_ms IS NOT NULL
-            """, arguments: [latestRunId]),
-              let latestHrv = hrvRow["hrv_ms"] as? Double else { return nil }
+        let bundles = await HealthKitRecoveryFetcher().fetchRecovery(for: [latest.startedAt])
+        guard let bundle = bundles.first,
+              let latestHrv = bundle.runDay.hrvMs else { return nil }
 
-        guard let baselineRow = try Row.fetchOne(db, sql: """
-            SELECT AVG(rec.hrv_ms) AS avg_hrv
-            FROM recovery rec
-            JOIN runs r ON r.id = rec.run_id
-            WHERE rec.period = 'run_day'
-              AND rec.hrv_ms IS NOT NULL
-              AND r.started_at < ?
-              AND r.started_at >= datetime(?, '-30 days')
-            """, arguments: [latest.startedAt, latest.startedAt]),
-              let baselineHrv = baselineRow["avg_hrv"] as? Double,
-              baselineHrv > 0 else { return nil }
+        let recentDates = workouts.prefix(30).map(\.startedAt).filter { $0 < latest.startedAt }
+        guard !recentDates.isEmpty else { return nil }
+
+        let recentBundles = await HealthKitRecoveryFetcher().fetchRecovery(for: Array(recentDates))
+        let hrvValues = recentBundles.compactMap(\.runDay.hrvMs)
+        guard !hrvValues.isEmpty else { return nil }
+
+        let baselineHrv = hrvValues.reduce(0, +) / Double(hrvValues.count)
+        guard baselineHrv > 0 else { return nil }
 
         let dropPct = (baselineHrv - latestHrv) / baselineHrv * 100
         guard dropPct >= 15 else { return nil }
 
-        try mark(key: key, now: now, in: db)
+        mark(key: key, notified: &notified)
 
-        // Schedule for tomorrow at 07:00.
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
         var components = Calendar.current.dateComponents([.year, .month, .day], from: tomorrow)
         components.hour = 7
@@ -394,13 +326,6 @@ final class MilestoneDetector: @unchecked Sendable {
 
     // MARK: - Helpers
 
-    private static func mark(key: String, now: String, in db: Database) throws {
-        try db.execute(
-            sql: "INSERT OR IGNORE INTO notified_milestones (key, fired_at) VALUES (?, ?)",
-            arguments: [key, now]
-        )
-    }
-
     private static func isEnabled(_ category: NotificationPayload.Category, in s: NotificationSettings) -> Bool {
         switch category {
         case .runComplete:     return s.runComplete
@@ -413,6 +338,10 @@ final class MilestoneDetector: @unchecked Sendable {
 
     private static func formatPace(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private static func isoString(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
     }
 
     private static func streakMessage(_ days: Int) -> String {
@@ -437,4 +366,3 @@ final class MilestoneDetector: @unchecked Sendable {
         }
     }
 }
-

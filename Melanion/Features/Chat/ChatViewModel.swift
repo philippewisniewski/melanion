@@ -1,5 +1,4 @@
 import Foundation
-import GRDB
 import FoundationModels
 import Observation
 
@@ -11,11 +10,8 @@ final class ChatViewModel {
     var inputText: String = ""
     var isLoading: Bool = false
     var statusLabel: String = ""
-    var canRetry: Bool = false
 
     private var lastQuestion: String = ""
-    private let classifier = ClassifierPipeline()
-    private let responder = ResponderPipeline()
 
     // MARK: - Send
 
@@ -23,14 +19,12 @@ final class ChatViewModel {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isLoading else { return }
         inputText = ""
-        canRetry = false
         lastQuestion = text
         await run(question: text, using: service)
     }
 
     func retry(using service: LanguageModelService) async {
         guard !lastQuestion.isEmpty, !isLoading else { return }
-        // Remove the last error bubble before retrying
         if messages.last?.role == .error { messages.removeLast() }
         await run(question: lastQuestion, using: service)
     }
@@ -43,98 +37,66 @@ final class ChatViewModel {
         statusLabel = "Thinking…"
 
         do {
-            // Step 1 — Classify
-            let (definition, params) = try await classifier.classify(question: question, using: service)
-
-            // Step 2 — Execute SQL query
-            statusLabel = "Querying your data…"
-            let rows: [[String: Any?]]
-            do {
-                rows = try await DatabaseManager.shared.db.read { db in
-                    try definition.execute(db: db, params: params)
-                }
-            } catch {
-                print("[ChatViewModel] SQL error: \(error)")
-                appendError("Something went wrong querying your data.")
-                reset()
-                return
-            }
-
-            // Step 3 — Format Markdown table
-            let markdownTable = MarkdownTableFormatter.format(rows)
-
-            // Step 4 — Stream response
-            statusLabel = "Generating response…"
-            var assistantMessage = ChatMessage(role: .assistant, content: "")
+            let assistantMessage = ChatMessage(role: .assistant, content: "")
             messages.append(assistantMessage)
             let messageId = assistantMessage.id
 
-            let stream = responder.respond(
-                question: question,
-                markdownTable: markdownTable,
-                format: definition.format,
-                using: service
-            )
+            let stream = service.session.streamResponse(to: question)
 
-            for await partial in stream {
+            for try await snapshot in stream {
+                statusLabel = ""
                 if let idx = messages.firstIndex(where: { $0.id == messageId }) {
-                    messages[idx].content = partial   // replace — each partial is a full snapshot
+                    messages[idx].content = snapshot.content
                 }
             }
 
-            // Step 5 — Attach card data (or show error if stream produced nothing)
-            if let idx = messages.firstIndex(where: { $0.id == messageId }) {
-                if messages[idx].content.isEmpty {
-                    messages.remove(at: idx)
-                    appendError("I couldn't generate a response.")
-                    canRetry = true
-                } else {
-                    messages[idx].responseFormat = definition.format
-                    messages[idx].cardRows = rows
-                }
+            if let idx = messages.firstIndex(where: { $0.id == messageId }),
+               messages[idx].content.isEmpty {
+                messages.remove(at: idx)
+                appendError("I couldn't generate a response.")
             }
 
-        } catch is ClassifierError {
-            appendError("I couldn't understand that — try rephrasing your question.")
-        } catch LanguageModelSession.GenerationError.exceededContextWindowSize {
-            appendError("Your data was too large to process. Try a more specific question.")
+        } catch is LanguageModelSession.GenerationError {
+            appendError("Your request was too large. Try a more specific question.")
         } catch {
-            appendError("I couldn't understand that — try rephrasing your question.")
+            appendError("Something went wrong — try rephrasing your question.")
         }
 
-        reset()
+        isLoading = false
+        statusLabel = ""
     }
 
     // MARK: - Welcome data
 
     func fetchWelcome() async -> WelcomeData? {
-        try? await DatabaseManager.shared.db.read { db in
-            guard let run = try RunRecord
-                .order(Column("started_at").desc)
-                .fetchOne(db)
-            else { return nil }
-
-            let streak = try Self.computeStreak(db: db)
-            return WelcomeData(
-                lastRunDate: run.date,
-                lastRunDistanceKm: run.distanceKm,
-                lastRunPaceSeconds: run.paceSeconds,
-                currentStreak: streak
-            )
+        guard let workouts = try? await HealthKitWorkoutFetcher().fetchRunningWorkouts(),
+              let last = workouts.first else {
+            return nil
         }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "d MMM yyyy"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+
+        let streak = Self.computeStreak(from: workouts)
+
+        return WelcomeData(
+            lastRunDate: dateFormatter.string(from: last.startedAt),
+            lastRunDistanceKm: last.distanceKm,
+            lastRunPaceSeconds: last.paceSeconds,
+            currentStreak: streak
+        )
     }
 
-    private nonisolated static func computeStreak(db: Database) throws -> Int {
-        let dates = try String.fetchAll(db, sql: "SELECT DISTINCT date FROM runs ORDER BY date DESC")
-        guard !dates.isEmpty else { return 0 }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
+    private nonisolated static func computeStreak(from workouts: [RunWorkout]) -> Int {
+        let cal = Calendar.current
+        let runDays = Set(workouts.map { cal.startOfDay(for: $0.startedAt) }).sorted(by: >)
+        guard let latest = runDays.first else { return 0 }
+
         var streak = 0
-        var expected = Calendar.current.startOfDay(for: Date())
-        for dateStr in dates {
-            guard let date = formatter.date(from: dateStr) else { continue }
-            let day = Calendar.current.startOfDay(for: date)
-            let diff = Calendar.current.dateComponents([.day], from: day, to: expected).day ?? 999
+        var expected = cal.startOfDay(for: Date())
+        for day in runDays {
+            let diff = cal.dateComponents([.day], from: day, to: expected).day ?? 999
             if diff <= 1 { streak += 1; expected = day } else { break }
         }
         return streak
@@ -144,11 +106,6 @@ final class ChatViewModel {
 
     private func appendError(_ message: String) {
         messages.append(ChatMessage(role: .error, content: message))
-    }
-
-    private func reset() {
-        isLoading = false
-        statusLabel = ""
     }
 }
 

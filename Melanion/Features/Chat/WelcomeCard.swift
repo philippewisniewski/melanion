@@ -20,7 +20,7 @@ struct WelcomeCard: View {
             HStack(spacing: 12) {
                 StatPill(label: "Last run", value: data.lastRunDate)
                 StatPill(label: "Distance", value: String(format: "%.1f km", data.lastRunDistanceKm))
-                StatPill(label: "Pace", value: MarkdownTableFormatter.formatPace(data.lastRunPaceSeconds))
+                StatPill(label: "Pace", value: String(format: "%d:%02d/km", data.lastRunPaceSeconds / 60, data.lastRunPaceSeconds % 60))
             }
 
             if data.currentStreak > 0 {
@@ -33,6 +33,35 @@ struct WelcomeCard: View {
                         .foregroundStyle(Theme.textPrimary)
                 }
             }
+
+            Text("Ask me anything about your training…")
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .padding(20)
+        .background(Theme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+struct WelcomeCardEmpty: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Welcome")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Theme.textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Text("Let's get started")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            Text("No runs imported yet. Record a run with Apple Watch or sync your workouts to Apple Health, then re-sync in Settings.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
 
             Text("Ask me anything about your training…")
                 .font(.subheadline)

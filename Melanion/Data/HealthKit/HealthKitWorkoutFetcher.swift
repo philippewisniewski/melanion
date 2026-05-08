@@ -5,7 +5,7 @@ struct HealthKitWorkoutFetcher {
 
     private let store: HKHealthStore
 
-    init(store: HKHealthStore = HKHealthStore()) {
+    init(store: HKHealthStore = HealthKitPermissionManager.shared.store) {
         self.store = store
     }
 

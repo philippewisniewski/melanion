@@ -1,14 +1,12 @@
 import SwiftUI
 
 struct FirstLaunchSetupView: View {
-    @State private var pipeline = SeedingPipeline()
     @Environment(IntelligenceGate.self) private var gate
-    @State private var setupPhase: SetupPhase = .idle
-    @State private var seedError: String?
-
-    enum SetupPhase {
-        case idle, seeding, checkingAI, complete
-    }
+    @State private var steps: [StepModel] = [
+        StepModel(label: "Health permissions", icon: "heart.circle"),
+        StepModel(label: "Verify your runs", icon: "figure.run.circle"),
+        StepModel(label: "Check AI model", icon: "brain")
+    ]
 
     var body: some View {
         ZStack {
@@ -27,37 +25,22 @@ struct FirstLaunchSetupView: View {
                 }
 
                 VStack(spacing: 24) {
-                    SetupStepRow(
-                        icon: "checkmark.circle.fill",
-                        label: "Health permissions granted",
-                        subLabel: nil,
-                        state: .complete,
-                        progress: nil
-                    )
-
-                    SetupStepRow(
-                        icon: "figure.run.circle",
-                        label: setupPhase == .seeding ? seedingLabel : "Import your runs",
-                        subLabel: pipeline.progress.map { "\($0.processed) of \($0.total)" },
-                        state: stepState(for: .seeding),
-                        progress: seedingProgress,
-                        errorMessage: seedError,
-                        onRetry: { Task { await runSeeding() } }
-                    )
-
-                    SetupStepRow(
-                        icon: "brain",
-                        label: "Check AI model",
-                        subLabel: aiSubLabel,
-                        state: stepState(for: .checkingAI),
-                        progress: nil
-                    )
+                    ForEach(steps) { step in
+                        SetupStepRow(step: step) {
+                            guard step.id == steps[1].id else { return }
+                            steps[1].error = nil
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                steps[1].state = .active(progress: nil, detail: nil)
+                            }
+                            await verifyRuns()
+                        }
+                    }
                 }
                 .padding(.horizontal, 24)
 
                 Spacer()
 
-                if setupPhase == .complete {
+                if steps.allSatisfy({ if case .complete = $0.state { return true }; return false }) {
                     Button {
                         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
                     } label: {
@@ -71,7 +54,7 @@ struct FirstLaunchSetupView: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 48)
-                    .transition(.opacity)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
@@ -81,109 +64,133 @@ struct FirstLaunchSetupView: View {
     // MARK: - Setup orchestration
 
     private func runFullSetup() async {
-        await runSeeding()
-        guard seedError == nil else { return }
-        withAnimation { setupPhase = .checkingAI }
-        // Gate check is near-instant — give it a brief moment to feel intentional
-        try? await Task.sleep(for: .milliseconds(600))
-        withAnimation { setupPhase = .complete }
-    }
-
-    private func runSeeding() async {
-        seedError = nil
-        withAnimation { setupPhase = .seeding }
-        await pipeline.seed()
-        if let error = pipeline.lastError {
-            seedError = error
+        // Step 1 — Verify health permissions
+        withAnimation(.easeInOut(duration: 0.4)) {
+            steps[0].state = .active(progress: nil, detail: "Verifying…")
         }
-    }
-
-    // MARK: - Computed helpers
-
-    private var seedingLabel: String {
-        guard let p = pipeline.progress else { return "Import your runs" }
-        switch p.phase {
-        case .fetchingWorkouts: return "Fetching workouts…"
-        case .fetchingRecovery: return "Fetching recovery data…"
-        case .fetchingRoutes:   return "Fetching routes…"
-        case .writing:          return "Writing to database…"
-        case .complete:         return "Runs imported"
+        try? await Task.sleep(for: .seconds(1.2))
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+            steps[0].state = .complete(detail: "Granted")
         }
-    }
 
-    private var seedingProgress: Double? {
-        guard let p = pipeline.progress, p.total > 0 else { return nil }
-        return Double(p.processed) / Double(p.total)
-    }
+        try? await Task.sleep(for: .seconds(0.8))
 
-    private var aiSubLabel: String? {
-        guard setupPhase == .checkingAI || setupPhase == .complete else { return nil }
-        if gate.isAvailable { return "Ready" }
-        return gate.unavailableReason
-    }
+        // Step 2 — Verify HealthKit data
+        withAnimation(.easeInOut(duration: 0.4)) {
+            steps[1].state = .active(progress: nil, detail: "Checking HealthKit…")
+        }
+        await verifyRuns()
+        guard steps[1].error == nil else { return }
 
-    private func stepState(for phase: SetupPhase) -> SetupStepRow.StepState {
-        switch phase {
-        case .idle: return .pending
-        case .seeding:
-            if setupPhase == .seeding {
-                return pipeline.isRunning ? .active : (seedError != nil ? .failed : .complete)
+        try? await Task.sleep(for: .seconds(0.8))
+
+        // Step 3 — AI model check
+        withAnimation(.easeInOut(duration: 0.4)) {
+            steps[2].state = .active(progress: nil, detail: "Checking…")
+        }
+        try? await Task.sleep(for: .seconds(1.2))
+        gate.recheck()
+        if gate.isAvailable {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                steps[2].state = .complete(detail: "Ready")
             }
-            return (setupPhase == .checkingAI || setupPhase == .complete) ? .complete : .pending
-        case .checkingAI:
-            if setupPhase == .checkingAI { return .active }
-            if setupPhase == .complete { return .complete }
-            return .pending
-        case .complete: return .pending
+        } else {
+            withAnimation(.easeInOut(duration: 0.4)) {
+                steps[2].error = gate.unavailableReason ?? "Apple Intelligence is not available."
+                steps[2].state = .failed
+            }
         }
+    }
+
+    private func verifyRuns() async {
+        steps[1].error = nil
+
+        do {
+            let workouts = try await HealthKitWorkoutFetcher().fetchRunningWorkouts()
+            let count = workouts.count
+
+            await MilestoneDetector.shared.evaluateAfterSync()
+
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                steps[1].state = .complete(detail: "\(count) runs found")
+            }
+        } catch {
+            withAnimation(.easeInOut(duration: 0.4)) {
+                steps[1].error = error.localizedDescription
+                steps[1].state = .failed
+            }
+        }
+    }
+}
+
+// MARK: - Step model
+
+struct StepModel: Identifiable {
+    let id = UUID()
+    let label: String
+    let icon: String
+    var state: StepState = .pending
+    var error: String?
+
+    enum StepState: Equatable {
+        case pending
+        case active(progress: Double?, detail: String?)
+        case complete(detail: String?)
+        case failed
     }
 }
 
 // MARK: - SetupStepRow
 
 struct SetupStepRow: View {
-    enum StepState { case pending, active, complete, failed }
-
-    let icon: String
-    let label: String
-    let subLabel: String?
-    let state: StepState
-    var progress: Double?
-    var errorMessage: String? = nil
-    var onRetry: (() -> Void)? = nil
+    let step: StepModel
+    var onRetry: (() async -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             stateIcon
-                .frame(width: 32, height: 32)
+                .frame(width: 36, height: 36)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(label)
+                Text(step.label)
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(labelColor)
 
-                if let sub = subLabel {
-                    Text(sub)
-                        .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-
-                if state == .active, let prog = progress {
-                    ProgressView(value: prog)
-                        .tint(Theme.accent)
-                        .animation(.easeInOut, value: prog)
-                }
-
-                if let error = errorMessage, state == .failed {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                    if let retry = onRetry {
-                        Button("Retry", action: retry)
+                switch step.state {
+                case .active(let progress, let detail):
+                    if let detail {
+                        Text(detail)
                             .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                            .contentTransition(.numericText())
+                    }
+                    ProgressView(value: progress)
+                        .tint(Theme.accent)
+                        .animation(.easeInOut(duration: 0.3), value: progress)
+
+                case .complete(let detail):
+                    if let detail {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                            .transition(.blurReplace)
+                    }
+
+                case .failed:
+                    if let error = step.error {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    if let onRetry {
+                        Button("Retry") { Task { await onRetry() } }
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.accent)
                     }
+
+                case .pending:
+                    EmptyView()
                 }
             }
 
@@ -192,39 +199,41 @@ struct SetupStepRow: View {
         .padding(16)
         .background(Theme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .animation(.easeInOut(duration: 0.4), value: step.state)
     }
 
     @ViewBuilder
     private var stateIcon: some View {
-        switch state {
+        switch step.state {
         case .pending:
-            Image(systemName: icon)
-                .font(.system(size: 18))
+            Image(systemName: step.icon)
+                .font(.system(size: 20))
                 .foregroundStyle(Theme.textSecondary)
-                .frame(width: 32, height: 32)
+
         case .active:
             ProgressView()
                 .tint(Theme.accent)
-                .frame(width: 32, height: 32)
+
         case .complete:
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 24))
+                .font(.system(size: 26))
                 .foregroundStyle(Theme.accent)
-                .frame(width: 32, height: 32)
+                .transition(.scale.combined(with: .opacity))
+
         case .failed:
-            Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 24))
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 26))
                 .foregroundStyle(.red)
-                .frame(width: 32, height: 32)
+                .transition(.scale.combined(with: .opacity))
         }
     }
 
     private var labelColor: Color {
-        switch state {
-        case .pending:  return Theme.textSecondary
-        case .active:   return Theme.textPrimary
-        case .complete: return Theme.accent
-        case .failed:   return .red
+        switch step.state {
+        case .pending:  Theme.textSecondary
+        case .active:   Theme.textPrimary
+        case .complete: Theme.accent
+        case .failed:   .red
         }
     }
 }

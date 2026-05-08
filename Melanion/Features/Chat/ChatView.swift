@@ -4,6 +4,7 @@ struct ChatView: View {
     @Environment(LanguageModelService.self) private var languageModelService
     @State private var viewModel = ChatViewModel()
     @State private var welcomeData: WelcomeData?
+    @State private var hasLoadedWelcome = false
 
     var body: some View {
         ZStack {
@@ -37,6 +38,10 @@ struct ChatView: View {
                                     WelcomeCard(data: welcome)
                                         .padding(.top, 24)
                                         .id("welcome")
+                                } else if hasLoadedWelcome {
+                                    WelcomeCardEmpty()
+                                        .padding(.top, 24)
+                                        .id("welcome-empty")
                                 } else {
                                     ProgressView()
                                         .tint(Theme.accent)
@@ -88,10 +93,10 @@ struct ChatView: View {
                 }
             }
         }
-        .ignoresSafeArea(.keyboard)
         .toolbar(.hidden, for: .navigationBar)
         .task {
             welcomeData = await viewModel.fetchWelcome()
+            hasLoadedWelcome = true
             languageModelService.prewarm()
         }
     }

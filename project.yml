@@ -7,11 +7,6 @@ options:
   swift: "6.0"
   createIntermediateGroups: true
 
-packages:
-  GRDB:
-    url: https://github.com/groue/GRDB.swift
-    from: 7.0.0
-
 targets:
   Melanion:
     type: application
@@ -28,13 +23,11 @@ targets:
         DEVELOPMENT_TEAM: ""
         INFOPLIST_FILE: Melanion/Info.plist
         CODE_SIGN_STYLE: Automatic
-    dependencies:
-      - package: GRDB
+    dependencies: []
     entitlements:
       path: Melanion/Melanion.entitlements
       properties:
         com.apple.developer.healthkit: true
-        com.apple.developer.healthkit.access: []
     info:
       path: Melanion/Info.plist
       properties:
