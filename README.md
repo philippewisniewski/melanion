@@ -1,68 +1,71 @@
 # Melanion
 
-A personal running coach and analytics app that lives entirely on your iPhone. Ask natural language questions about your training — pace trends, personal bests, recovery patterns, VO₂ max over time — and get data-driven coaching answers backed by your full HealthKit history. No cloud, no subscription, no data leaving your device.
+A personal running coach and analytics app that lives entirely on your iPhone. Ask natural language questions about your training — pace trends, personal bests, recovery patterns, VO2 max over time — and get data-driven coaching answers backed by your full HealthKit history. No cloud, no subscription, no data leaving your device.
 
 ---
 
 ## What it does
 
-Melanion reads your complete running history from Apple Health and stores it in a local SQLite database. When you ask a question in plain English ("What's my best 10km pace this year?" / "How does my sleep affect my next-day pace?"), the app routes it to the right SQL query, executes it, and generates a coached narrative response — all on-device using Apple Intelligence.
+Melanion queries your complete running history directly from Apple Health. When you ask a question in plain English ("What's my best 10km pace this year?" / "How does my sleep affect my next-day pace?"), the on-device model calls the right tools to fetch your data from HealthKit, then generates a coached narrative response — all using Apple Intelligence.
 
-The result is a chat interface where every answer is grounded in your actual data, formatted as text with a typed data card below it. The app also surfaces proactive coaching moments as local notifications — new personal bests, streak milestones, trend improvements, and recovery nudges — without any cloud infrastructure.
+The result is a chat interface where every answer is grounded in your actual data. The app also surfaces proactive coaching moments as local notifications — new personal bests, streak milestones, trend improvements, and recovery nudges — without any cloud infrastructure.
 
 ---
 
 ## Architecture
 
-The app is built around a **two-call LLM pipeline**:
+The app is built around Apple's **Foundation Models Tool protocol**. A single `LanguageModelSession` receives the user's question and decides which tools to call to fetch the relevant HealthKit data, then synthesises a coaching response.
 
 ```
 User question
-    │
-    ▼
-┌─────────────────────────────────┐
-│  Call 1 — Classifier            │
-│  @Generable structured output   │
-│  Routes question → SQL query    │
-└─────────────────────────────────┘
-    │  (QueryDefinition + params)
-    ▼
-┌─────────────────────────────────┐
-│  SQL Execution (GRDB / SQLite)  │
-│  25 named queries               │
-│  Returns [[String: Any?]] rows  │
-└─────────────────────────────────┘
-    │  (Markdown table)
-    ▼
-┌─────────────────────────────────┐
-│  Call 2 — Responder             │
-│  Streaming text generation      │
-│  Coaching narrative + card      │
-└─────────────────────────────────┘
-    │
-    ▼
-Chat bubble + typed data card
+    |
+    v
++-----------------------------------+
+|  LanguageModelSession             |
+|  On-device LLM (Apple Intelligence)|
+|  Instructions + athlete profile   |
++-----------------------------------+
+    |  (model decides which tools to call)
+    v
++-----------------------------------+
+|  Tools (4 conformances)           |
+|  RunHistoryTool                   |
+|  TrainingTrendsTool               |
+|  RecoveryTool                     |
+|  RouteTool                        |
++-----------------------------------+
+    |  (query HealthKit directly)
+    v
++-----------------------------------+
+|  HealthKit                        |
+|  HKWorkout, HKWorkoutRoute,      |
+|  HRV, sleep, VO2 max, etc.       |
++-----------------------------------+
+    |  (formatted string results)
+    v
++-----------------------------------+
+|  Model synthesises response       |
+|  Streaming text generation        |
++-----------------------------------+
+    |
+    v
+Chat bubble (streamed text)
 ```
 
-This separation keeps the classifier deterministic (structured output constrains the model to valid query names) and lets the responder focus purely on generating natural language without needing to reason about data retrieval.
+The model autonomously decides which tools to invoke based on the question, removing the need for a separate classifier step. Tool output is returned as concise formatted strings to stay within the 4,096 token context window.
 
 ---
 
 ## Apple Frameworks & APIs
 
 ### HealthKit
-Used to read the complete running history from Apple Health. Melanion accesses:
+The primary data source. Melanion reads directly from Apple Health on every query — no local database, no caching layer. Data accessed includes:
 - **HKWorkout** — running sessions with duration, distance, heart rate, and biomechanical form metrics (ground contact time, vertical oscillation, stride length, running power)
 - **HKWorkoutRoute / HKWorkoutRouteQuery** — GPS polylines and per-km elevation data for each run
-- **Recovery metrics** — HRV, resting heart rate, VO₂ max, sleep duration, respiratory rate, wrist temperature, SpO₂, and one-minute heart rate recovery — fetched across three time windows per run (night before, run day, day after)
-
-All data is read once on first launch and stored locally in GRDB. Subsequent launches go straight to chat.
+- **Recovery metrics** — HRV, resting heart rate, VO2 max, sleep duration, respiratory rate, wrist temperature, SpO2, and one-minute heart rate recovery — fetched across three time windows per run (night before, run day, day after)
 
 ### Foundation Models
-Apple's on-device large language model, powering both pipeline calls. See the [Foundation Models](#foundation-models) section below for a deep dive.
-
-### Swift Charts
-Powers the `TrendCard` component — line and area charts for trends like VO₂ max over time, monthly training volume, resting heart rate, and sleep-vs-pace correlation. The Y axis is pace-aware: it formats raw `Int` seconds as `MM:SS/km` strings rather than numbers.
+Apple's on-device large language model, powering the chat pipeline via the Tool protocol. See the [Foundation Models](#foundation-models) section below for a deep dive.
 
 ### SwiftUI
 The entire UI is SwiftUI-only — no storyboards, no UIKit views. Notable patterns used:
@@ -77,7 +80,7 @@ The entire UI is SwiftUI-only — no storyboards, no UIKit views. Notable patter
 - Per-km split times (elapsed time at each distance milestone)
 - Elevation gain and loss per km segment
 - Total route elevation gain
-- A downsampled polyline stored as a JSON-encoded `[[Double]]` array (≤200 points per run) for map rendering
+- A downsampled polyline stored as a JSON-encoded `[[Double]]` array (<=200 points per run) for map rendering
 
 ---
 
@@ -87,8 +90,8 @@ The entire UI is SwiftUI-only — no storyboards, no UIKit views. Notable patter
 The app is compiled with Swift 6 and full strict concurrency checking. Every type that crosses actor boundaries must be `Sendable`. Key patterns used throughout:
 
 - **`@MainActor`** on all `@Observable` view models and services — UI state is always mutated on the main actor
-- **`nonisolated`** on pure computation functions (`computeStreak`, `computeGAP`) that don't touch shared state
-- **`@unchecked Sendable`** on `ChatMessage` — justified because it contains `[String: Any?]` (inherently not `Sendable`) but is only ever accessed on `@MainActor`
+- **`nonisolated`** on pure computation functions (`computeStreak`) that don't touch shared state
+- **`@unchecked Sendable`** on `MilestoneDetector` — a singleton accessed from background tasks, where internal state is protected by structured concurrency
 - **`nonisolated(unsafe)`** on `BundledContext._biomechanicsReference` — a write-once lazy cache, safe because the write is idempotent
 
 ### Observation Framework (`@Observable`)
@@ -99,27 +102,36 @@ All view models use the `@Observable` macro introduced in iOS 17, replacing `Obs
 
 ### Structured Concurrency
 - **`async/await`** throughout — no completion handlers or Combine
-- **`AsyncStream<String>`** bridges the Foundation Models `ResponseStream` to the UI layer
-- **`AsyncSequence` iteration** (`for try await partial in stream`) for streaming LLM responses
-- **`Task { @MainActor in }`** inside `ResponderPipeline` to satisfy actor isolation when accessing the `@MainActor`-isolated `LanguageModelService.responderSession`
+- **`AsyncSequence` iteration** (`for try await snapshot in stream`) for streaming LLM responses
 - **`withCheckedContinuation`** / **`withCheckedThrowingContinuation`** to bridge legacy callback-based HealthKit queries into the async/await world
 
-### Protocol-Oriented Design
-`QueryDefinition` is the core protocol powering the data layer:
+### Tool Protocol
+The `Tool` protocol from Foundation Models is the core abstraction powering the data layer. Each tool defines a `@Generable` `Arguments` type that the model fills in, and a `call(arguments:)` method that queries HealthKit and returns a formatted string:
 
 ```swift
-protocol QueryDefinition: Sendable {
-    var name: String { get }        // identifier — used by classifier
-    var description: String { get } // natural language — used in classifier prompt
-    var format: ResponseFormat { get }
-    func execute(db: Database, params: [String: String]) throws -> [QueryRow]
+struct RunHistoryTool: Tool {
+    let name = "getRunHistory"
+    let description = "Fetch running workouts with filtering and sorting"
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "recent, week, month, year, or all")
+        var timeframe: String
+        @Guide(description: "Max runs to return", .range(1...20))
+        var count: Int
+        @Guide(description: "date, pace, distance, duration, or elevation")
+        var sortBy: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        let workouts = try await HealthKitWorkoutFetcher().fetchRunningWorkouts()
+        // Filter by timeframe, sort, take count, format as concise string
+        return formatted
+    }
 }
 ```
 
-All 25 query types conform to this protocol. `QueryRegistry.all` is the single source of truth — adding a new query automatically makes it available to the classifier prompt, the `@Generable` enum, and the UI card system.
-
-### Swift Testing
-The `MelanionTests` target uses the Swift Testing framework (`import Testing`, `@Test`, `#expect`) introduced in Xcode 16. The `DatabaseMigrationTests` suite runs the full GRDB migrator against an in-memory `DatabaseQueue` and asserts every table and column exists — without touching the device's actual database.
+Four tools cover the full query surface — `RunHistoryTool`, `TrainingTrendsTool`, `RecoveryTool`, and `RouteTool` — consolidating what was previously 25 separate SQL queries.
 
 ---
 
@@ -134,90 +146,67 @@ Foundation Models is Apple's framework for accessing the on-device large languag
 - **Offline** — works on a run with no signal
 
 ### `LanguageModelSession`
-The core inference object. Each session maintains its own conversation history, eliminating the need for manual turn management. Melanion uses two distinct session strategies:
+The core inference object. Each session maintains its own conversation history, eliminating the need for manual turn management. Melanion creates a single session per conversation with tools and instructions:
 
 ```swift
-// Classifier — fresh session per call, no instructions, no history needed
-func classifierSession() -> LanguageModelSession {
-    LanguageModelSession()
-}
-
-// Responder — persistent session, instructions set once, history accumulates
-private func makeResponderSession(profile: UserProfile) -> LanguageModelSession {
-    LanguageModelSession {
-        SystemPromptBuilder.build(profile: profile)
-    }
-}
+let session = LanguageModelSession(
+    tools: [RunHistoryTool(), TrainingTrendsTool(), RecoveryTool(), RouteTool()],
+    instructions: "You are Melanion, a running coach. Use tools to fetch the user's HealthKit data before answering."
+)
 ```
 
-The classifier gets a fresh session on every call so prior conversation context never contaminates query routing. The responder reuses a single session so the model maintains awareness of the conversation history across turns.
+Tools are passed at session creation. The model autonomously decides which tools to call based on the user's question — no classifier step needed.
 
 ### `@Generable` — Structured Output
-The `@Generable` macro is the most powerful feature used in Melanion. Applied to a Swift `struct` or `enum`, it generates a `GenerationSchema` that constrains the model's output to that exact type — no JSON parsing, no regex, no temperature tuning.
+The `@Generable` macro constrains the model's output to an exact Swift type. In Melanion, it's used for tool arguments — the model fills in typed parameters that drive HealthKit queries:
 
 ```swift
 @Generable
-enum QueryName: String, Codable, CaseIterable {
-    case recentRuns         = "recent_runs"
-    case personalBest       = "personal_best"
-    case vo2MaxTrend        = "vo2_max_trend"
-    // ... 25 cases total
-}
-
-@Generable
-struct QueryRouting {
-    @Guide(description: "Select the query that best matches the user's question.")
-    var query: QueryName
-
-    @Guide(description: "Parameters required by the query. Empty dictionary if none needed.")
-    var params: [String: String]
+struct Arguments {
+    @Guide(description: "week, month, or season")
+    var period: String
+    @Guide(description: "pace, distance, volume, frequency, vo2max, hr, or streak")
+    var metric: String
 }
 ```
 
-When the classifier calls `session.respond(to: prompt, generating: QueryRouting.self, options: GenerationOptions(sampling: .greedy))`, the model is **structurally constrained** to produce a valid `QueryName` case. It is impossible for it to hallucinate a query name that doesn't exist in the registry.
-
-`@Guide` steers the model semantically within the structural constraint. `GenerationOptions(sampling: .greedy)` makes the output deterministic — equivalent to temperature 0.
+`@Guide` steers the model semantically within the structural constraint, keeping descriptions short to conserve tokens.
 
 ### `streamResponse` — Live Rendering
-The responder uses streaming so the assistant bubble starts filling in immediately rather than waiting for the full response:
+The chat uses streaming so the assistant bubble starts filling in immediately:
 
 ```swift
-let stream = service.responderSession.streamResponse(to: userTurn)
-for await partial in stream {
-    // each partial is a FULL SNAPSHOT of the text so far — replace, don't append
-    messages[idx].content = partial
+let stream = service.session.streamResponse(to: question)
+for try await snapshot in stream {
+    // each snapshot is a FULL SNAPSHOT of the text so far — replace, don't append
+    messages[idx].content = snapshot.content
 }
 ```
 
-`streamResponse(to:)` returns a `LanguageModelSession.ResponseStream<String>` — an `AsyncSequence` where each element is the full generated text so far, not an incremental token delta. The UI replaces the bubble content on each yield, giving a typewriter effect.
-
-### `Instructions` — System Prompts
-Session instructions are set once at session creation using a result-builder closure:
-
-```swift
-LanguageModelSession {
-    "You are Melanion, a personal running coach and analyst."
-    "Your athlete: \(profile.name), goal: \(profile.goal.rawValue)"
-    // biomechanics reference, format hints...
-}
-```
-
-The format hint (how the model should structure its answer — single stat, numbered list, trend description, or detailed breakdown) is injected into each **user turn** rather than the session instructions. This keeps the persistent session reusable across queries with different response formats without rebuilding it.
+`streamResponse(to:)` returns a `ResponseStream<String>` — an `AsyncSequence` where each element is the full generated text so far, not an incremental token delta. The UI replaces the bubble content on each yield, giving a typewriter effect.
 
 ### Context Window
 The model has a **4,096 token** combined input/output context window. Melanion is designed to stay within this:
-- System prompt (role + profile + biomechanics reference): ~350 tokens
-- Markdown table from SQL query: typically 100–500 tokens depending on result size
-- Format hint + user question: ~50 tokens
-- Response: ~200–400 tokens
+- Instructions (role + athlete profile): ~100 tokens
+- Tool definitions (4 tools): ~200 tokens
+- Tool output (formatted HealthKit data): typically 100-300 tokens
+- User question: ~20-50 tokens
+- Response: ~200-400 tokens
 
-If a query produces a table that would exceed the context window, `LanguageModelSession.GenerationError.exceededContextWindowSize` is thrown and the user sees "Your data was too large to process. Try a more specific question."
+Tools return concise formatted strings rather than complex structured types to minimize token consumption. If a request exceeds the context window, `LanguageModelSession.GenerationError` is thrown and the user sees a helpful error message.
+
+### `prewarm` — Faster First Response
+`prewarm(promptPrefix:)` is called when the chat view appears, pre-processing instructions and tool schemas so the first response starts faster:
+
+```swift
+session.prewarm(promptPrefix: "Analyze my")
+```
 
 ### Hardware Requirements
 Foundation Models requires:
 - iPhone 15 Pro / iPhone 15 Pro Max or later (A17 Pro chip)
 - iPad with M1 chip or later
-- Apple Intelligence enabled in Settings → Apple Intelligence & Siri
+- Apple Intelligence enabled in Settings > Apple Intelligence & Siri
 - iOS 26+
 
 Melanion checks `SystemLanguageModel.default.availability` at the app root and shows a blocking `IntelligenceUnavailableView` with actionable guidance if the requirement isn't met.
@@ -226,63 +215,60 @@ Melanion checks `SystemLanguageModel.default.availability` at the app root and s
 
 ## Data Layer
 
-**GRDB** (an SQLite wrapper for Swift) stores all run data in a local database at `Application Support/melanion.sqlite`. Three tables:
+There is no local database. HealthKit is the single source of truth — every tool call queries Apple Health directly via `HealthKitWorkoutFetcher`, `HealthKitRecoveryFetcher`, and `HealthKitRouteFetcher`.
 
-| Table | Purpose |
+| Fetcher | Purpose |
 |---|---|
-| `runs` | One row per workout — pace, distance, HR, form metrics, GPS metadata |
-| `recovery` | Three rows per run — HRV, sleep, resting HR across night_before / run_day / day_after |
-| `route_splits` | Per-km split times and elevation for runs with GPS data |
-| `notified_milestones` | One row per fired notification event — prevents any milestone firing more than once across re-seeds |
+| `HealthKitWorkoutFetcher` | Running workouts — pace, distance, HR, form metrics |
+| `HealthKitRecoveryFetcher` | Recovery data — HRV, sleep, resting HR, VO2 max across three time windows per run |
+| `HealthKitRouteFetcher` | GPS routes — per-km splits, elevation gain/loss, polylines |
 
-The schema mirrors the original TypeScript `running-agent` exactly, enabling the same 25 SQL queries to work without translation. All column names are snake_case; GRDB's `DatabaseColumnDecodingStrategy.convertFromSnakeCase` maps them automatically to camelCase Swift properties.
+On first launch, the onboarding flow verifies HealthKit access and reports how many runs are available. No import or seeding step is required.
 
 ---
 
 ## Notifications
 
-Melanion delivers proactive coaching moments as **local notifications** — no push certificates, no server, no cloud. Everything is handled by `UNUserNotificationCenter` on-device, consistent with the app's zero-infrastructure philosophy.
+Melanion delivers proactive coaching moments as **local notifications** — no push certificates, no server, no cloud. Everything is handled by `UNUserNotificationCenter` on-device.
 
 ### When notifications fire
 
-Notifications are evaluated inside a single GRDB write transaction at the end of every HealthKit sync (`MilestoneDetector.evaluateAfterSync()`). Each event writes a row to `notified_milestones` so it never fires more than once, even across re-seeds.
+Notifications are evaluated by `MilestoneDetector.evaluateAfterSync()`, which queries HealthKit directly for workout and recovery data. Each fired event is tracked in UserDefaults so it never fires more than once.
 
 | Category | Trigger |
 |---|---|
 | **Run complete** | Any run with a start time within the last 24 hours |
-| **All-time pace PB** | Sync produces a new fastest-ever run |
+| **All-time pace PB** | Latest run is the fastest ever |
 | **Distance bracket PB** | Fastest 5 km, 10 km, half-marathon, or marathon |
 | **Longest run ever** | New all-time distance record |
 | **Streak milestones** | 7, 14, 30, 50, and 100 consecutive running days |
 | **Run count milestones** | 10th, 25th, 50th, 100th, and 250th total run |
 | **Welcome back** | First run after a gap of more than 14 days |
-| **Weekly pace trend** | Average pace improved >3% vs the prior 4-week window — scheduled as a `UNCalendarNotificationTrigger` for next Monday at 08:00 |
-| **Recovery nudge** | Hard run (high HR, >15 km, or >200 m elevation) followed by HRV dropping >15% below the 30-day baseline — scheduled for the next morning at 07:00 |
+| **Weekly pace trend** | Average pace improved >3% vs the prior 4-week window — scheduled for next Monday at 08:00 |
+| **Recovery nudge** | Hard run (high HR, >15 km, or >200 m elevation) followed by HRV dropping >15% below baseline — scheduled for the next morning at 07:00 |
 
 ### Architecture
 
 ```
-SeedingPipeline.seed()
-    │  (after successful DB write)
-    ▼
 MilestoneDetector.evaluateAfterSync()
-    │  (single GRDB write transaction)
-    ├─ query runs + notified_milestones
-    ├─ detect events, mark keys as fired
-    └─ return [NotificationPayload]
-    │
-    ▼
+    |  (queries HealthKit directly)
+    +-- fetch workouts via HealthKitWorkoutFetcher
+    +-- fetch recovery via HealthKitRecoveryFetcher
+    +-- detect events, dedup via UserDefaults
+    +-- return [NotificationPayload]
+    |
+    v
 NotificationService.schedule(_:)
-    │  (UNUserNotificationCenter)
-    ▼
+    |  (UNUserNotificationCenter)
+    v
 Local notification delivered when app is backgrounded
 ```
 
-**`NotificationService`** is a singleton registered as `UNUserNotificationCenterDelegate` at app launch. The `willPresent` delegate method suppresses banners while the app is in the foreground — the user is already in the app, so there's no need to interrupt them.
+**`NotificationService`** is a singleton registered as `UNUserNotificationCenterDelegate` at app launch. The `willPresent` delegate method suppresses banners while the app is in the foreground.
 
 ### User settings
 
-All five notification categories are individually toggle-able in **Settings → Notifications**. The OS permission sheet is requested only when the user enables their first toggle, never at cold launch.
+All five notification categories are individually toggle-able in **Settings > Notifications**. The OS permission sheet is requested only when the user enables their first toggle, never at cold launch.
 
 ---
 
