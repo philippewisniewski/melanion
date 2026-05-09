@@ -155,3 +155,86 @@ Issues where the tool returned correct data but the model's reasoning was wrong.
 | Keyboard dismissal | `ChatView.swift` | Added `.scrollDismissesKeyboard(.interactively)` to ScrollView |
 | Xcode scheme missing | `project.yml` | Added scheme definition so simulator/device destinations appear |
 | Prewarm type error | `LanguageModelService.swift` | Changed `"Analyze my"` to `Prompt("Analyze my")` |
+
+---
+
+## Raw Data Verification — 2026-05-09
+
+Cross-referenced all test results against the raw Apple Health export (`export.xml`, 463MB, 59 real runs spanning Feb 2025 – Apr 2026) and 29 GPX route files in `workout-routes/`. Distance is stored in `WorkoutStatistics` child elements (miles, converted). HR, calories, and elevation come from `WorkoutStatistics` and `MetadataEntry` (`HKElevationAscended`). HR data is only present from May 2025 onward — earlier Strava-sourced runs have no HR statistics in the export.
+
+---
+
+### Individual Workout Queries — Verified Correct
+
+The following model outputs were confirmed accurate against the raw export to within rounding:
+
+| Test | Claim | Raw Data | Verdict |
+|---|---|---|---|
+| Q2 — fastest run | 20 May, 4:50/km, 7.2km, 34m41s | 7.17km, 34m41s, 4:50/km | **MATCH** |
+| Q3 — longest run | 14 Feb, 20.7km, 5:34/km, 1h55m | 20.66km, 1h55m02s, 5:34/km | **MATCH** |
+| Q4 — top 5 longest | 20.7 / 20.0 / 19.6 / 17.8 / 16.7km | All five confirmed to ±0.1km in correct order | **MATCH** |
+| Q5 — HR >170bpm run | 27 Apr, 178bpm, 5:02/km, 11.5km | 178.4bpm, 5:02/km, 11.49km | **MATCH** (one of 29 qualifying runs — tool returned most recent) |
+| Q6 — hilliest run value | 113m elevation on 27 Apr | HKMetadata=114m, GPX computed=112.6m | **MATCH ±1m** — but see bug below |
+
+---
+
+### Bug-Level Discrepancies — Tool Layer, Not Model
+
+These are incorrect results where the raw data is unambiguous. The model is working with wrong tool output.
+
+**Bug 1 — "Hilliest run" returns latest, not maximum elevation (Q7)**
+- 27 Apr was returned with 113m gain
+- Actual top runs by elevation: Feb 1 = 313m, Mar 22 = 313m, Oct 18 = 283m, Dec 25 = 282m
+- 27 Apr ranks ~15th in the dataset — not the hilliest by any measure
+- Root cause: `getRunHistory` is not sorting by `HKElevationAscended` descending; it appears to be returning the most recent run that has elevation data
+- **Fix:** Sort by elevation descending when query intent is "hilliest". Do not conflate recency with maximum.
+
+**Bug 2 — RouteTool "last run" resolves to wrong workout (Q23, Q24)**
+- Tool returned Apr 19 (15.76km, 5:12/km) as the last run
+- Actual last run is Apr 27 (11.49km, 5:02/km); GPX file `route_2026-04-27_4.20pm.gpx` exists on disk
+- The Apr 24 pacing claim ("improved from 5:38 to 5:02/km") uses 5:02 which matches Apr 27, not Apr 19, suggesting the two tools resolved "last run" to different workouts — a consistency failure
+- Root cause: `getRunRoute` is likely sorting GPX files alphabetically or using a different date field than `getRunHistory`
+- **Fix:** Both tools must resolve "last run" against the same date sort key (workout `endDate` from HealthKit, not filesystem timestamp).
+
+**Bug 3 — "This month" filter returns 1 of 5 April 2026 runs (Q8)**
+- Tool returned 1 run (Apr 19) for "this month" (April 2026)
+- Raw data has 5 runs in April 2026: Apr 8, 10, 19, 23, 27
+- Root cause: likely an off-by-one or `<` vs `<=` boundary error in the month date range, or the filter is computing against the wrong reference date
+- **Fix:** Audit the date range predicate for "this month" — ensure it spans the full calendar month, not a rolling 30-day window from the most recent run.
+
+---
+
+### Aggregate & Trend Data — Numbers Do Not Match Raw Export
+
+These outputs are wrong and cannot be explained by rounding or windowing choices. The tool layer is computing over an incorrect or incomplete dataset.
+
+| Test | Claim | Raw Data | Gap |
+|---|---|---|---|
+| Q9 — avg pace | 5:19/km | 5:35/km (all 59 runs); 5:33/km (May 2025+ only) | Off by ~14s/km; no plausible subset produces 5:19 |
+| Q9 — avg distance | 12.5km | 11.3km (all runs); 11.5km (May 2025+) | Off by ~1km |
+| Q10 — total km | ~49.5km (implied) | 666.8km total dataset | Matches only ~4 recent runs — severe windowing bug |
+| Q15 — VO2 max +1.4 | Increased by 1.4 over 3 months | +0.26 (true 3-month window to test date); ~+1.8 (window ending at last run Apr 27) | Cannot reproduce +1.4 from any window |
+| Q16 — resting HR -10bpm | Decreased by 10bpm over 3 months | Flat trend, 56–65bpm range; actual 3-month change = +2bpm | Opposite direction; no 10bpm decline in any window |
+
+**Notes on calorie data (Q10):** Calories are absent from `WorkoutStatistics` for all Strava-sourced runs in the export (no `HKQuantityTypeIdentifierActiveEnergyBurned` child element). If the tool is reporting calories for these runs it is either computing an estimate or sourcing from somewhere other than Workout-level statistics. This should be documented in the tool.
+
+**Notes on VO2 max:** 191 records in the export spanning Feb 2025 – May 2026. Values are stable in the 43–46 ml/kg/min range with no abrupt changes. The +1.4 figure does not correspond to any 3-month window against the test date. If `getTrainingTrends` uses the last run date as the window end (Apr 27) rather than the current date, the closest result is +1.77, still not +1.4. The metric computation in the tool needs to be audited.
+
+**Notes on resting HR:** 255 records, stable in the 56–70bpm range throughout the 3-month window. No downward trend is present. The -10bpm claim is the largest factual discrepancy in the test suite and indicates either a faulty aggregation or the tool is selecting outlier records as window boundaries.
+
+---
+
+### What Is and Isn't a Model Problem
+
+| Issue | Root Cause | Where to Fix |
+|---|---|---|
+| Pace direction confusion (Q5, ad-hoc) | Model reasoning | System prompt + tool-side pre-filtering |
+| Vague summaries, missing units (Q14, Q15, Q25) | Model over-summarising | Enrich tool output with units and labels |
+| Model doesn't call tool (Q18, Q21, Q22) | Model tool-awareness | System prompt; tool description breadth |
+| HRV unit wrong — "bpm" instead of "ms" (Q20) | Tool output missing unit label | Add "ms" suffix to HRV values in `RecoveryTool` output |
+| Hilliest run wrong (Q7) | Tool sort logic | Fix `getRunHistory` elevation sort |
+| Wrong "last run" (Q23) | Tool date sort inconsistency | Align `getRunRoute` sort key with HealthKit `endDate` |
+| "This month" returns 1 of 5 runs (Q8) | Tool date filter boundary | Fix month range predicate |
+| Avg pace / distance / total km wrong (Q9, Q10) | Tool aggregation window | Audit `getTrainingTrends` date window and dataset scope |
+| VO2 max +1.4 unverifiable (Q15) | Tool metric computation | Audit window end date and value selection logic |
+| Resting HR -10bpm wrong (Q16) | Tool metric computation | Audit outlier handling and window boundaries |
