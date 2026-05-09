@@ -13,17 +13,17 @@ struct RecoveryTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         let workouts = try await HealthKitWorkoutFetcher().fetchRunningWorkouts()
-        guard !workouts.isEmpty else {
+        guard let firstWorkout = workouts.first else {
             return "No running workouts found."
         }
 
         let targetDate: Date
         if arguments.runDate.lowercased() == "latest" {
-            targetDate = workouts.first!.startedAt
+            targetDate = firstWorkout.startedAt
         } else {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withFullDate]
-            targetDate = formatter.date(from: arguments.runDate) ?? workouts.first!.startedAt
+            targetDate = formatter.date(from: arguments.runDate) ?? firstWorkout.startedAt
         }
 
         let bundles = await HealthKitRecoveryFetcher().fetchRecovery(for: [targetDate])

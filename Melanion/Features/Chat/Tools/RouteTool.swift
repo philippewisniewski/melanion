@@ -14,13 +14,14 @@ struct RouteTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         let rawWorkouts = try await fetchRawWorkouts()
-        guard !rawWorkouts.isEmpty else {
+        let sorted = rawWorkouts.sorted { $0.startDate > $1.startDate }
+        guard let mostRecent = sorted.first else {
             return "No running workouts found."
         }
 
         let targetWorkout: HKWorkout
         if arguments.runDate.lowercased() == "latest" {
-            targetWorkout = rawWorkouts.sorted { $0.startDate > $1.startDate }.first!
+            targetWorkout = mostRecent
         } else {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withFullDate]
@@ -30,7 +31,7 @@ struct RouteTool: Tool {
                }) {
                 targetWorkout = match
             } else {
-                targetWorkout = rawWorkouts.sorted { $0.startDate > $1.startDate }.first!
+                targetWorkout = mostRecent
             }
         }
 

@@ -84,7 +84,12 @@ struct TrainingTrendsTool: Tool {
             lines.append("- \(label): \(runs.count) runs")
         }
         let total = workouts.count
-        let weeks = max(1, Calendar.current.dateComponents([.weekOfYear], from: workouts.last!.startedAt, to: workouts.first!.startedAt).weekOfYear ?? 1)
+        let weeks: Int
+        if let first = workouts.first, let last = workouts.last {
+            weeks = max(1, Calendar.current.dateComponents([.weekOfYear], from: last.startedAt, to: first.startedAt).weekOfYear ?? 1)
+        } else {
+            weeks = 1
+        }
         lines.append("Overall: \(total) runs over \(weeks) weeks (\(String(format: "%.1f", Double(total) / Double(weeks))) runs/week)")
         return lines.joined(separator: "\n")
     }

@@ -35,14 +35,3 @@ targets:
           UIColorName: ""
         NSHealthShareUsageDescription: "Melanion reads your running workouts to analyse pace, distance and heart rate trends."
         NSHealthUpdateUsageDescription: "Melanion may write derived metrics back to HealthKit for reference."
-
-  MelanionTests:
-    type: bundle.unit-test
-    platform: iOS
-    deploymentTarget: "26.0"
-    sources: MelanionTests
-    dependencies:
-      - target: Melanion
-    settings:
-      base:
-        SWIFT_VERSION: "6.0"
