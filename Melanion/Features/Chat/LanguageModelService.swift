@@ -31,6 +31,6 @@ final class LanguageModelService {
     }
 
     func prewarm() {
-        session.prewarm(promptPrefix: "Analyze my")
+        session.prewarm(promptPrefix: Prompt("Analyze my"))
     }
 }

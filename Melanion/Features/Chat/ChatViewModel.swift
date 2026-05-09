@@ -94,7 +94,7 @@ final class ChatViewModel {
         guard let latest = runDays.first else { return 0 }
 
         var streak = 0
-        var expected = cal.startOfDay(for: Date())
+        var expected = latest
         for day in runDays {
             let diff = cal.dateComponents([.day], from: day, to: expected).day ?? 999
             if diff <= 1 { streak += 1; expected = day } else { break }

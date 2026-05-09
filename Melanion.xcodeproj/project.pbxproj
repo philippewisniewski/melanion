@@ -62,7 +62,7 @@
 		61FC27CBF6AD04C0BC70D856 /* RouteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteData.swift; sourceTree = "<group>"; };
 		645684C2459A9E1DD74A050F /* OnboardingProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingProfileView.swift; sourceTree = "<group>"; };
 		7275175D59482352BC464B2C /* LanguageModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageModelService.swift; sourceTree = "<group>"; };
-		7D132C082E768B41E9F8E975 /* Melanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Melanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D132C082E768B41E9F8E975 /* Melanion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Melanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EBC03B9CFFBAC3AA90C80D3 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		82FB9889E0038A7C393C4650 /* RunWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunWorkout.swift; sourceTree = "<group>"; };
 		8599272CAC541FF285FBCEE2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -279,7 +279,6 @@
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					DA34713B5589D654D6E0C9AC = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -431,7 +430,7 @@
 				CODE_SIGN_ENTITLEMENTS = Melanion/Melanion.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4BYFYA8V97;
 				INFOPLIST_FILE = Melanion/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -452,7 +451,7 @@
 				CODE_SIGN_ENTITLEMENTS = Melanion/Melanion.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4BYFYA8V97;
 				INFOPLIST_FILE = Melanion/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (

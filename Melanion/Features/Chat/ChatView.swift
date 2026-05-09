@@ -86,6 +86,7 @@ struct ChatView: View {
                         }
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .safeAreaInset(edge: .bottom) {
                     PromptInput(text: $viewModel.inputText, isLoading: viewModel.isLoading) {
                         Task { await viewModel.send(using: languageModelService) }

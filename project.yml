@@ -7,6 +7,18 @@ options:
   swift: "6.0"
   createIntermediateGroups: true
 
+schemes:
+  Melanion:
+    build:
+      targets:
+        Melanion: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    archive:
+      config: Release
+
 targets:
   Melanion:
     type: application
