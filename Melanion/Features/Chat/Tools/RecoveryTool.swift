@@ -3,7 +3,7 @@ import FoundationModels
 
 struct RecoveryTool: Tool {
     let name = "getRecoveryData"
-    let description = "Fetch recovery metrics around a run"
+    let description = "Fetch recovery metrics — sleep, HRV, resting HR, VO2 max, and respiratory data around a run"
 
     @Generable
     struct Arguments {

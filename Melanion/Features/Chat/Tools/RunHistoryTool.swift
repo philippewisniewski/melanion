@@ -3,7 +3,7 @@ import FoundationModels
 
 struct RunHistoryTool: Tool {
     let name = "getRunHistory"
-    let description = "Fetch running workouts with filtering and sorting"
+    let description = "Fetch running workouts — distances, paces, heart rates, calories, elevation with filtering and sorting"
 
     @Generable
     struct Arguments {
@@ -41,11 +41,11 @@ struct RunHistoryTool: Tool {
         let cutoff: Date?
         switch timeframe.lowercased() {
         case "week":
-            cutoff = cal.date(byAdding: .day, value: -7, to: now)
+            cutoff = cal.dateInterval(of: .weekOfYear, for: now)?.start
         case "month":
-            cutoff = cal.date(byAdding: .month, value: -1, to: now)
+            cutoff = cal.dateInterval(of: .month, for: now)?.start
         case "year":
-            cutoff = cal.date(byAdding: .year, value: -1, to: now)
+            cutoff = cal.dateInterval(of: .year, for: now)?.start
         case "all":
             cutoff = nil
         default:

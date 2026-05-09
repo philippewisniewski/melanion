@@ -4,7 +4,7 @@ import HealthKit
 
 struct RouteTool: Tool {
     let name = "getRunRoute"
-    let description = "Fetch route splits and elevation for a run"
+    let description = "Fetch per-km splits, pacing, and elevation profile for a run"
 
     @Generable
     struct Arguments {
@@ -13,56 +13,33 @@ struct RouteTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        let rawWorkouts = try await fetchRawWorkouts()
-        let sorted = rawWorkouts.sorted { $0.startDate > $1.startDate }
-        guard let mostRecent = sorted.first else {
+        let pairs = try await HealthKitWorkoutFetcher().fetchRunningWorkoutPairs()
+        guard let first = pairs.first else {
             return "No running workouts found."
         }
 
-        let targetWorkout: HKWorkout
+        let target: (mapped: RunWorkout, raw: HKWorkout)
         if arguments.runDate.lowercased() == "latest" {
-            targetWorkout = mostRecent
+            target = first
         } else {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withFullDate]
             if let parsed = formatter.date(from: arguments.runDate),
-               let match = rawWorkouts.first(where: {
-                   Calendar.current.isDate($0.startDate, inSameDayAs: parsed)
-               }) {
-                targetWorkout = match
+               let match = pairs
+                .filter({ Calendar.current.isDate($0.mapped.startedAt, inSameDayAs: parsed) })
+                .first {
+                target = match
             } else {
-                targetWorkout = mostRecent
+                target = first
             }
         }
 
-        let routes = await HealthKitRouteFetcher().fetchRoutes(for: [targetWorkout])
+        let routes = await HealthKitRouteFetcher().fetchRoutes(for: [target.raw])
         guard let route = routes.first else {
             return "No route data available for this run."
         }
 
         return formatRoute(route)
-    }
-
-    // MARK: - Raw workout fetch
-
-    private func fetchRawWorkouts() async throws -> [HKWorkout] {
-        let store = HealthKitPermissionManager.shared.store
-        return try await withCheckedThrowingContinuation { continuation in
-            let predicate = HKQuery.predicateForWorkouts(with: .running)
-            let query = HKSampleQuery(
-                sampleType: HKObjectType.workoutType(),
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: nil
-            ) { _, samples, error in
-                if let error {
-                    continuation.resume(throwing: HealthKitError.queryFailed(error))
-                    return
-                }
-                continuation.resume(returning: (samples as? [HKWorkout]) ?? [])
-            }
-            store.execute(query)
-        }
     }
 
     // MARK: - Formatting

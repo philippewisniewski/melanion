@@ -99,6 +99,7 @@ struct ChatView: View {
             welcomeData = await viewModel.fetchWelcome()
             hasLoadedWelcome = true
             languageModelService.prewarm()
+            languageModelService.logTokenBudget()
         }
     }
 }

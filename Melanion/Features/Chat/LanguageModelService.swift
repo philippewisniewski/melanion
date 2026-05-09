@@ -33,4 +33,9 @@ final class LanguageModelService {
     func prewarm() {
         session.prewarm(promptPrefix: Prompt("Analyze my"))
     }
+
+    func logTokenBudget() {
+        let model = SystemLanguageModel.default
+        print("[TokenBudget] Context window: \(model.contextSize) tokens")
+    }
 }

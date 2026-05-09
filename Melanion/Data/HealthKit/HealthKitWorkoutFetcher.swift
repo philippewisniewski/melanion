@@ -14,9 +14,19 @@ struct HealthKitWorkoutFetcher {
     /// Fetches all running workouts, optionally filtered to those starting on or after `since`.
     /// Returns workouts sorted by startedAt descending.
     func fetchRunningWorkouts(since: Date? = nil) async throws -> [RunWorkout] {
+        let pairs = try await fetchRunningWorkoutPairs(since: since)
+        return pairs.map(\.mapped)
+    }
+
+    /// Returns both the mapped RunWorkout and the raw HKWorkout for each running workout.
+    /// Sorted by startedAt descending. Used by RouteTool to pass raw workouts to HealthKitRouteFetcher.
+    func fetchRunningWorkoutPairs(since: Date? = nil) async throws -> [(mapped: RunWorkout, raw: HKWorkout)] {
         let workouts = try await queryRunningWorkouts(since: since)
-        let mapped = workouts.compactMap { mapWorkout($0) }
-        return mapped.sorted { $0.startedAt > $1.startedAt }
+        let pairs = workouts.compactMap { raw -> (mapped: RunWorkout, raw: HKWorkout)? in
+            guard let mapped = mapWorkout(raw) else { return nil }
+            return (mapped: mapped, raw: raw)
+        }
+        return pairs.sorted { $0.mapped.startedAt > $1.mapped.startedAt }
     }
 
     // MARK: - Query
@@ -114,6 +124,14 @@ struct HealthKitWorkoutFetcher {
             .sumQuantity()
             .map { Int($0.doubleValue(for: .kilocalorie())) }
 
+        // Elevation gain from workout metadata
+        let elevationGainMetres: Double?
+        if let q = workout.metadata?[HKMetadataKeyElevationAscended] as? HKQuantity {
+            elevationGainMetres = q.doubleValue(for: .meter())
+        } else {
+            elevationGainMetres = nil
+        }
+
         return RunWorkout(
             startedAt: workout.startDate,
             durationSeconds: durationSeconds,
@@ -128,7 +146,7 @@ struct HealthKitWorkoutFetcher {
             strideLengthMetres: strideLengthMetres,
             runningPowerWatts: runningPowerWatts,
             activeCaloriesKcal: activeCaloriesKcal,
-            elevationGainMetres: nil
+            elevationGainMetres: elevationGainMetres
         )
     }
 }

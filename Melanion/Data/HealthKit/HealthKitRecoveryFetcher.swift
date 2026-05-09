@@ -101,7 +101,56 @@ struct HealthKitRecoveryFetcher: Sendable {
         )
     }
 
-    // MARK: - Quantity fetch
+    // MARK: - Multi-sample fetch (for trends)
+
+    func fetchVO2MaxSamples(in window: DateInterval) async -> [Double] {
+        await fetchQuantitySamples(
+            .vo2Max,
+            unit: HKUnit.literUnit(with: .milli)
+                .unitDivided(by: HKUnit.gramUnit(with: .kilo).unitMultiplied(by: .minute())),
+            in: window
+        )
+    }
+
+    func fetchRestingHRSamples(in window: DateInterval) async -> [Double] {
+        await fetchQuantitySamples(
+            .restingHeartRate,
+            unit: HKUnit.count().unitDivided(by: .minute()),
+            in: window
+        )
+    }
+
+    private func fetchQuantitySamples(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        in window: DateInterval
+    ) async -> [Double] {
+        let quantityType = HKQuantityType(identifier)
+        let predicate = HKQuery.predicateForSamples(
+            withStart: window.start,
+            end: window.end,
+            options: [.strictStartDate, .strictEndDate]
+        )
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: quantityType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                guard error == nil, let samples = samples as? [HKQuantitySample] else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                continuation.resume(returning: samples.map { $0.quantity.doubleValue(for: unit) })
+            }
+            store.execute(query)
+        }
+    }
+
+    // MARK: - Single-sample fetch
 
     private func fetchQuantity(
         _ identifier: HKQuantityTypeIdentifier,
