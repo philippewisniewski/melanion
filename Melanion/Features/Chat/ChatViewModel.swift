@@ -85,7 +85,7 @@ final class ChatViewModel {
         switch intent {
         case .lastRun, .longestRun, .fastestRun, .slowestRun:
             return await streamGenerable(prompt: prompt, type: SingleRunResponse.self, format: formatSingleRun, service: service, messageId: messageId, options: options)
-        case .lastFew, .calories, .elevation, .heartRate, .cadence:
+        case .lastFew, .topFew, .calories, .elevation, .heartRate, .cadence:
             return await streamGenerable(prompt: prompt, type: RunListResponse.self, format: formatRunList, service: service, messageId: messageId, options: options)
         case .trends, .weeklyMonthly:
             return await streamGenerable(prompt: prompt, type: TrendResponse.self, format: formatTrend, service: service, messageId: messageId, options: options)

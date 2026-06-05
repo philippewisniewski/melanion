@@ -27,7 +27,11 @@ struct DataRetriever {
         if q.contains("total") || q.contains("all time") || q.contains("ever") || q.contains("overall") || q.contains("lifetime") { return .total }
         if q.contains("week") || q.contains("weekly") || q.contains("month") || q.contains("monthly") || q.contains("volume") || q.contains("frequency") || q.contains("often") { return .weeklyMonthly }
 
-        if let n = extractNumber(after: "top", in: q) { return .lastFew(n) }
+        if let n = extractNumber(after: "top", in: q) {
+            if q.contains("longest") || q.contains("furthest") { return .topFew(n, attribute: .distance) }
+            if q.contains("fastest") || q.contains("quickest") { return .topFew(n, attribute: .pace) }
+            return .lastFew(n)
+        }
         if let n = extractNumber(after: "last", in: q) { return .lastFew(n) }
         if let n = extractNumber(after: "recent", in: q) { return .lastFew(n) }
 
@@ -57,9 +61,15 @@ struct DataRetriever {
 
     // MARK: - Intent
 
+    enum SortAttribute {
+        case distance
+        case pace
+    }
+
     enum Intent {
         case lastRun
         case lastFew(Int)
+        case topFew(Int, attribute: SortAttribute)
         case longestRun
         case fastestRun
         case slowestRun
@@ -91,6 +101,21 @@ struct DataRetriever {
             let count = min(n, workouts.count)
             let lines = workouts.prefix(count).map(formatStructured)
             return "Run data (last \(count)):\n" + lines.joined(separator: "\n---\n")
+
+        case .topFew(let n, let attribute):
+            let sorted: [RunWorkout]
+            let label: String
+            switch attribute {
+            case .distance:
+                sorted = workouts.sorted { $0.distanceKm > $1.distanceKm }
+                label = "distance"
+            case .pace:
+                sorted = workouts.sorted { $0.paceSeconds < $1.paceSeconds }
+                label = "pace"
+            }
+            let count = min(n, sorted.count)
+            let lines = sorted.prefix(count).map(formatStructured)
+            return "Run data (top \(count) by \(label)):\n" + lines.joined(separator: "\n---\n")
 
         case .longestRun, .fastestRun, .slowestRun, .averagePace, .averageDistance, .total:
             return ""
