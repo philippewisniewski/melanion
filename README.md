@@ -6,53 +6,64 @@ A personal running coach and analytics app that lives entirely on your iPhone. A
 
 ## What it does
 
-Melanion queries your complete running history directly from Apple Health. When you ask a question in plain English ("What's my best 10km pace this year?" / "How does my sleep affect my next-day pace?"), the on-device model calls the right tools to fetch your data from HealthKit, then generates a coached narrative response — all using Apple Intelligence.
+Melanion queries your complete running history directly from Apple Health. When you ask a question in plain English, a `DataRetriever` classifies the intent, fetches the relevant HealthKit data, and injects it as structured key-value pairs into the prompt. The on-device foundation model generates a guided `@Generable` response type, and Swift code formats the output into natural language prose — all using Apple Intelligence.
 
-The result is a chat interface where every answer is grounded in your actual data. The app also surfaces proactive coaching moments as local notifications — new personal bests, streak milestones, trend improvements, and recovery nudges — without any cloud infrastructure.
+The app also surfaces proactive coaching moments as local notifications — new personal bests, streak milestones, trend improvements, and recovery nudges — without any cloud infrastructure.
 
 ---
 
 ## Architecture
-
-The app is built around Apple's **Foundation Models Tool protocol**. A single `LanguageModelSession` receives the user's question and decides which tools to call to fetch the relevant HealthKit data, then synthesises a coaching response.
 
 ```
 User question
     |
     v
 +-----------------------------------+
+|  DataRetriever.classify()         |
+|  Rule-based intent classification |
+|  (lastRun, lastFew, longestRun,   |
+|   trends, recovery, general, etc) |
++-----------------------------------+
+    |
+    v
++-----------------------------------+
+|  DataRetriever.retrieve(for:)     |
+|  Fetches HealthKit data           |
+|  Formats as structured key-value  |
+|  (distance_km: 5.20, pace_sec:   |
+|   312, start_hour: 17, etc.)      |
++-----------------------------------+
+    |
+    v
++-----------------------------------+
 |  LanguageModelSession             |
-|  On-device LLM (Apple Intelligence)|
-|  Instructions + athlete profile   |
+|  Apple FM (~3B, 2-bit quantised)  |
+|  streamResponse(to:generating:)   |
 +-----------------------------------+
-    |  (model decides which tools to call)
+    |  (per-intent @Generable type)
     v
 +-----------------------------------+
-|  Tools (4 conformances)           |
-|  RunHistoryTool                   |
-|  TrainingTrendsTool               |
-|  RecoveryTool                     |
-|  RouteTool                        |
+|  @Generable struct                |
+|  SingleRunResponse                |
+|  RunListResponse / RunListItem     |
+|  TrendResponse                    |
+|  RecoveryResponse                 |
+|  GeneralResponse                  |
 +-----------------------------------+
-    |  (query HealthKit directly)
+    |  (PartiallyGenerated stream)
     v
 +-----------------------------------+
-|  HealthKit                        |
-|  HKWorkout, HKWorkoutRoute,      |
-|  HRV, sleep, VO2 max, etc.       |
-+-----------------------------------+
-    |  (formatted string results)
-    v
-+-----------------------------------+
-|  Model synthesises response       |
-|  Streaming text generation        |
+|  Format function (Swift)          |
+|  Converts struct → natural prose  |
+|  "Your run on 22 May covered      |
+|   3.9 km."                        |
 +-----------------------------------+
     |
     v
 Chat bubble (streamed text)
 ```
 
-The model autonomously decides which tools to invoke based on the question, removing the need for a separate classifier step. Tool output is returned as concise formatted strings to stay within the 4,096 token context window.
+The model never decides which data to fetch — `DataRetriever.classify()` handles that in Swift using rule-based keyword matching. The model's only job is extracting values from structured data into typed `@Generable` fields. This eliminates the Tool protocol's reliability problems (model forgetting it has tools, calling wrong tools, hallucinating data).
 
 ---
 
@@ -65,7 +76,7 @@ The primary data source. Melanion reads directly from Apple Health on every quer
 - **Recovery metrics** — HRV, resting heart rate, VO2 max, sleep duration, respiratory rate, wrist temperature, SpO2, and one-minute heart rate recovery — fetched across three time windows per run (night before, run day, day after)
 
 ### Foundation Models
-Apple's on-device large language model, powering the chat pipeline via the Tool protocol. See the [Foundation Models](#foundation-models) section below for a deep dive.
+Apple's on-device large language model, accessed via `streamResponse(to:generating:)` for guided structured output. See the [Foundation Models](#foundation-models) section below for a deep dive.
 
 ### SwiftUI
 The entire UI is SwiftUI-only — no storyboards, no UIKit views. Notable patterns used:
@@ -105,33 +116,24 @@ All view models use the `@Observable` macro introduced in iOS 17, replacing `Obs
 - **`AsyncSequence` iteration** (`for try await snapshot in stream`) for streaming LLM responses
 - **`withCheckedContinuation`** / **`withCheckedThrowingContinuation`** to bridge legacy callback-based HealthKit queries into the async/await world
 
-### Tool Protocol
-The `Tool` protocol from Foundation Models is the core abstraction powering the data layer. Each tool defines a `@Generable` `Arguments` type that the model fills in, and a `call(arguments:)` method that queries HealthKit and returns a formatted string:
+### Data Flow
+The `DataRetriever` handles all HealthKit interaction in Swift. The model never fetches data — it only extracts values from data already in the prompt:
 
 ```swift
-struct RunHistoryTool: Tool {
-    let name = "getRunHistory"
-    let description = "Fetch running workouts with filtering and sorting"
+let intent = retriever.classify(question)
+let (data, precomputed) = await retriever.retrieve(for: question)
+let prompt = "\(data)\n\n\(precomputed)\n\nQuestion: \(question)"
 
-    @Generable
-    struct Arguments {
-        @Guide(description: "recent, week, month, year, or all")
-        var timeframe: String
-        @Guide(description: "Max runs to return", .range(1...20))
-        var count: Int
-        @Guide(description: "date, pace, distance, duration, or elevation")
-        var sortBy: String
-    }
-
-    func call(arguments: Arguments) async throws -> String {
-        let workouts = try await HealthKitWorkoutFetcher().fetchRunningWorkouts()
-        // Filter by timeframe, sort, take count, format as concise string
-        return formatted
-    }
+let stream = session.streamResponse(
+    to: prompt,
+    generating: SingleRunResponse.self,
+    includeSchemaInPrompt: true
+)
+for try await snapshot in stream {
+    let text = formatSingleRun(snapshot.content)
+    message.content = text
 }
 ```
-
-Four tools cover the full query surface — `RunHistoryTool`, `TrainingTrendsTool`, `RecoveryTool`, and `RouteTool` — consolidating what was previously 25 separate SQL queries.
 
 ---
 
@@ -146,61 +148,60 @@ Foundation Models is Apple's framework for accessing the on-device large languag
 - **Offline** — works on a run with no signal
 
 ### `LanguageModelSession`
-The core inference object. Each session maintains its own conversation history, eliminating the need for manual turn management. Melanion creates a single session per conversation with tools and instructions:
+Melanion creates a fresh session per question (no conversation history) to avoid context window issues:
 
 ```swift
-let session = LanguageModelSession(
-    tools: [RunHistoryTool(), TrainingTrendsTool(), RecoveryTool(), RouteTool()],
-    instructions: "You are Melanion, a running coach. Use tools to fetch the user's HealthKit data before answering."
-)
+let session = LanguageModelSession(instructions: systemPrompt)
 ```
 
-Tools are passed at session creation. The model autonomously decides which tools to call based on the user's question — no classifier step needed.
+The system prompt is short (~5 lines) and focuses on data fidelity: "You MUST use ONLY the data provided."
 
 ### `@Generable` — Structured Output
-The `@Generable` macro constrains the model's output to an exact Swift type. In Melanion, it's used for tool arguments — the model fills in typed parameters that drive HealthKit queries:
+The `@Generable` macro constrains the model's output to an exact Swift type. Melanion uses five response types, one per intent group:
 
 ```swift
-@Generable
-struct Arguments {
-    @Guide(description: "week, month, or season")
-    var period: String
-    @Guide(description: "pace, distance, volume, frequency, vo2max, hr, or streak")
-    var metric: String
+@Generable(description: "Summary of a single run with all available metrics")
+struct SingleRunResponse {
+    var date: String
+    var distanceKm: Double
+    var paceSeconds: Int
+    var durationSeconds: Int
+    var heartRateBpm: Int?
+    var caloriesKcal: Int?
+    var elevationMetres: Int?
+    var cadenceSpm: Int?
 }
 ```
 
-`@Guide` steers the model semantically within the structural constraint, keeping descriptions short to conserve tokens.
+`@Guide` descriptions steer the model semantically within the structural constraint. The schema is included in every prompt (`includeSchemaInPrompt: true`) since each question uses a fresh session.
 
-### `streamResponse` — Live Rendering
-The chat uses streaming so the assistant bubble starts filling in immediately:
+### `streamResponse` with `PartiallyGenerated`
+The chat uses streaming with guided generation so the assistant bubble starts filling in immediately:
 
 ```swift
-let stream = service.session.streamResponse(to: question)
+let stream = service.session.streamResponse(
+    to: prompt,
+    generating: SingleRunResponse.self,
+    includeSchemaInPrompt: true
+)
 for try await snapshot in stream {
-    // each snapshot is a FULL SNAPSHOT of the text so far — replace, don't append
-    messages[idx].content = snapshot.content
+    // snapshot.content is a PartiallyGenerated struct — all fields are Optional
+    // Our format function handles nil gracefully as fields populate
+    messages[idx].content = formatSingleRun(snapshot.content)
 }
 ```
-
-`streamResponse(to:)` returns a `ResponseStream<String>` — an `AsyncSequence` where each element is the full generated text so far, not an incremental token delta. The UI replaces the bubble content on each yield, giving a typewriter effect.
 
 ### Context Window
 The model has a **4,096 token** combined input/output context window. Melanion is designed to stay within this:
-- Instructions (role + athlete profile): ~100 tokens
-- Tool definitions (4 tools): ~200 tokens
-- Tool output (formatted HealthKit data): typically 100-300 tokens
+- System instructions: ~100 tokens
+- Data (structured key-value, 5-10 workouts): 200-800 tokens
+- Precomputed stats: ~100 tokens
+- @Generable schema: ~50-100 tokens
 - User question: ~20-50 tokens
 - Response: ~200-400 tokens
 
-Tools return concise formatted strings rather than complex structured types to minimize token consumption. If a request exceeds the context window, `LanguageModelSession.GenerationError` is thrown and the user sees a helpful error message.
-
 ### `prewarm` — Faster First Response
-`prewarm(promptPrefix:)` is called when the chat view appears, pre-processing instructions and tool schemas so the first response starts faster:
-
-```swift
-session.prewarm(promptPrefix: "Analyze my")
-```
+`prewarm(promptPrefix:)` is called when the chat view appears, pre-processing instructions so the first response starts faster.
 
 ### Hardware Requirements
 Foundation Models requires:
@@ -215,15 +216,14 @@ Melanion checks `SystemLanguageModel.default.availability` at the app root and s
 
 ## Data Layer
 
-There is no local database. HealthKit is the single source of truth — every tool call queries Apple Health directly via `HealthKitWorkoutFetcher`, `HealthKitRecoveryFetcher`, and `HealthKitRouteFetcher`.
+There is no local database. HealthKit is the single source of truth — `DataRetriever` queries Apple Health directly via `HealthKitWorkoutFetcher` and `HealthKitRecoveryFetcher`.
 
 | Fetcher | Purpose |
 |---|---|
-| `HealthKitWorkoutFetcher` | Running workouts — pace, distance, HR, form metrics |
+| `HealthKitWorkoutFetcher` | Running workouts — pace, distance, HR, form metrics, start hour |
 | `HealthKitRecoveryFetcher` | Recovery data — HRV, sleep, resting HR, VO2 max across three time windows per run |
-| `HealthKitRouteFetcher` | GPS routes — per-km splits, elevation gain/loss, polylines |
 
-On first launch, the onboarding flow verifies HealthKit access and reports how many runs are available. No import or seeding step is required.
+On first launch, the onboarding flow verifies HealthKit access and reports how many runs are available.
 
 ---
 
