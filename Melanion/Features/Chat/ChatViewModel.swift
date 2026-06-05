@@ -2,6 +2,11 @@ import Foundation
 import FoundationModels
 import Observation
 
+private let generationOptions = GenerationOptions(
+    sampling: .greedy,
+    temperature: nil
+)
+
 @Observable
 @MainActor
 final class ChatViewModel {
@@ -63,7 +68,7 @@ final class ChatViewModel {
         messages.append(ChatMessage(role: .assistant, content: "", id: messageId))
 
         do {
-            let stream = service.session.streamResponse(to: augmentedPrompt)
+            let stream = service.session.streamResponse(to: augmentedPrompt, options: generationOptions)
             for try await snapshot in stream {
                 statusLabel = ""
                 if let idx = messages.firstIndex(where: { $0.id == messageId }) {
