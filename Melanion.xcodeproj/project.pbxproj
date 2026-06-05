@@ -28,6 +28,7 @@
 		7C1886EDED334A9EC3761FA7 /* IntelligenceGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DD5FADE22A1A2DED2C729C /* IntelligenceGate.swift */; };
 		851033D9C11FEBA450439B93 /* MelanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF43EAF52E1359CB1A09588 /* MelanionApp.swift */; };
 		8BD157E00DD5B08C12A1C87D /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A20ABA1369ED2DC743A0559 /* OnboardingWelcomeView.swift */; };
+		9308AFD9DE84C06C1DC0A06A /* ResponseTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6AB02F9814286D25CBC02D /* ResponseTypes.swift */; };
 		9792086F3E1FE910C325CF16 /* HealthKitError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14507F037544F6D40078DB24 /* HealthKitError.swift */; };
 		9B8043D43131F3CE06CD0B62 /* NotificationSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1658E82E505A43C23DBFA8 /* NotificationSettings.swift */; };
 		9BFA28B877E7E241CEC6F979 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EBC03B9CFFBAC3AA90C80D3 /* ChatMessage.swift */; };
@@ -78,6 +79,7 @@
 		F0D2E5E1043131E60AEF648B /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F0DD5FADE22A1A2DED2C729C /* IntelligenceGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceGate.swift; sourceTree = "<group>"; };
 		F475F30DC94157B2274AF109 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		FC6AB02F9814286D25CBC02D /* ResponseTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseTypes.swift; sourceTree = "<group>"; };
 		FE6026FCC97576DA83121854 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -143,6 +145,7 @@
 				4CE2E6F4B60633B2D5B88579 /* LoadingDots.swift */,
 				8FE0951A4D9B6C11B4F9118B /* MessageBubble.swift */,
 				DA67ED8FA9E625EC798D8111 /* PromptInput.swift */,
+				FC6AB02F9814286D25CBC02D /* ResponseTypes.swift */,
 				DBD7C28B0630609B032CB8B7 /* SystemPromptBuilder.swift */,
 				B3B344B02F1F14F3E8825A6F /* WelcomeCard.swift */,
 			);
@@ -323,6 +326,7 @@
 				8BD157E00DD5B08C12A1C87D /* OnboardingWelcomeView.swift in Sources */,
 				76E1211D079FFC33E876E22C /* PromptInput.swift in Sources */,
 				2881E1208CDCAA3728F9651D /* RecoveryBundle.swift in Sources */,
+				9308AFD9DE84C06C1DC0A06A /* ResponseTypes.swift in Sources */,
 				ED9C0D101B8A04CEA24AA965 /* RouteData.swift in Sources */,
 				668B488776FD97ACC804A4D8 /* RunWorkout.swift in Sources */,
 				DB53F0DF7070F31205680FC8 /* SettingsView.swift in Sources */,
