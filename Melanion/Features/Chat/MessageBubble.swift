@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MessageBubble: View {
     let message: ChatMessage
@@ -15,9 +16,31 @@ struct MessageBubble: View {
                 .background(bubbleColor)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+                .overlay(alignment: .topTrailing) {
+                    if message.role == .assistant {
+                        copyButton
+                    }
+                }
 
             if message.role != .user { Spacer(minLength: 48) }
         }
+    }
+
+    private var copyButton: some View {
+        Button {
+            UIPasteboard.general.string = message.content
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 10, weight: .regular))
+                .foregroundStyle(Theme.textSecondary)
+                .padding(6)
+                .background(Theme.surface.opacity(0.8))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .padding(4)
+        .transition(.opacity)
     }
 
     private var bubbleColor: Color {

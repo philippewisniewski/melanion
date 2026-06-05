@@ -8,34 +8,27 @@ final class LanguageModelService {
 
     private(set) var session: LanguageModelSession
 
-    let tools: [any Tool] = [
-        RunHistoryTool(),
-        TrainingTrendsTool(),
-        RecoveryTool(),
-        RouteTool()
-    ]
-
     init() {
-        let instructions = SystemPromptBuilder.build(profile: UserProfile.load())
-        session = LanguageModelSession(tools: [
-            RunHistoryTool(),
-            TrainingTrendsTool(),
-            RecoveryTool(),
-            RouteTool()
-        ], instructions: instructions)
+        let text = SystemPromptBuilder.build(profile: UserProfile.load())
+        session = LanguageModelSession(instructions: Instructions(text))
     }
 
+    // MARK: - Session Management
+
     func resetSession(profile: UserProfile) {
-        let instructions = SystemPromptBuilder.build(profile: profile)
-        session = LanguageModelSession(tools: tools, instructions: instructions)
+        let text = SystemPromptBuilder.build(profile: profile)
+        session = LanguageModelSession(instructions: Instructions(text))
     }
 
     func prewarm() {
         session.prewarm(promptPrefix: Prompt("Analyze my"))
     }
 
-    func logTokenBudget() {
-        let model = SystemLanguageModel.default
-        print("[TokenBudget] Context window: \(model.contextSize) tokens")
+    /// Creates a brand new session from scratch — no prior context carried over.
+    /// Call before each user question so the model has a clean context window.
+    func freshSession() {
+        let text = SystemPromptBuilder.build(profile: UserProfile.load())
+        session = LanguageModelSession(instructions: Instructions(text))
+        session.prewarm(promptPrefix: Prompt("Analyze my"))
     }
 }

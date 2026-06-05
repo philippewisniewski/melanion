@@ -11,6 +11,7 @@ final class ChatViewModel {
     var isLoading: Bool = false
     var statusLabel: String = ""
 
+    private let retriever = DataRetriever()
     private var lastQuestion: String = ""
 
     // MARK: - Send
@@ -34,15 +35,35 @@ final class ChatViewModel {
     private func run(question: String, using service: LanguageModelService) async {
         messages.append(ChatMessage(role: .user, content: question))
         isLoading = true
+        statusLabel = "Loading data…"
+
+        // 1. Classify question and fetch only relevant data + pre-computed answers
+        let (data, precomputed) = await retriever.retrieve(for: question)
+
+        // 2. Fresh session per question (no prior context carried over).
         statusLabel = "Thinking…"
+        service.freshSession()
+
+        // 3. Augment prompt with data subset and pre-computed values
+        let augmentedPrompt = """
+            Running data:
+            \(data)
+
+            \(precomputed)
+
+            Question: \(question)
+            """
+
+        print("---MELANION PROMPT---")
+        print(augmentedPrompt)
+        print("---END MELANION PROMPT---")
+
+        // 4. Stream response
+        let messageId = UUID()
+        messages.append(ChatMessage(role: .assistant, content: "", id: messageId))
 
         do {
-            let assistantMessage = ChatMessage(role: .assistant, content: "")
-            messages.append(assistantMessage)
-            let messageId = assistantMessage.id
-
-            let stream = service.session.streamResponse(to: question)
-
+            let stream = service.session.streamResponse(to: augmentedPrompt)
             for try await snapshot in stream {
                 statusLabel = ""
                 if let idx = messages.firstIndex(where: { $0.id == messageId }) {
@@ -56,9 +77,11 @@ final class ChatViewModel {
                 appendError("I couldn't generate a response.")
             }
 
-        } catch is LanguageModelSession.GenerationError {
-            appendError("Your request was too large. Try a more specific question.")
         } catch {
+            print("Melanion stream error: \(error)")
+            if let idx = messages.firstIndex(where: { $0.id == messageId }) {
+                messages.remove(at: idx)
+            }
             appendError("Something went wrong — try rephrasing your question.")
         }
 

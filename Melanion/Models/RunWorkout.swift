@@ -15,6 +15,6 @@ struct RunWorkout: Sendable {
     let strideLengthMetres: Double?
     let runningPowerWatts: Int?
     let activeCaloriesKcal: Int?
-    /// Elevation gain — nil here, provided by HealthKitRouteFetcher
+    /// Elevation gain — populated from HealthKit during fetch
     let elevationGainMetres: Double?
 }

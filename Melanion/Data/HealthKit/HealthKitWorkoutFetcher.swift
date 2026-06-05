@@ -19,7 +19,7 @@ struct HealthKitWorkoutFetcher {
     }
 
     /// Returns both the mapped RunWorkout and the raw HKWorkout for each running workout.
-    /// Sorted by startedAt descending. Used by RouteTool to pass raw workouts to HealthKitRouteFetcher.
+    /// Sorted by startedAt descending.
     func fetchRunningWorkoutPairs(since: Date? = nil) async throws -> [(mapped: RunWorkout, raw: HKWorkout)] {
         let workouts = try await queryRunningWorkouts(since: since)
         let pairs = workouts.compactMap { raw -> (mapped: RunWorkout, raw: HKWorkout)? in
@@ -43,11 +43,12 @@ struct HealthKitWorkoutFetcher {
                 predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [predicate, datePredicate])
             }
 
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
             let query = HKSampleQuery(
                 sampleType: HKObjectType.workoutType(),
                 predicate: predicate,
                 limit: HKObjectQueryNoLimit,
-                sortDescriptors: nil
+                sortDescriptors: [sort]
             ) { _, samples, error in
                 if let error {
                     continuation.resume(throwing: HealthKitError.queryFailed(error))

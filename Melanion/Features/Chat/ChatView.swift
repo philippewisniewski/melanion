@@ -31,58 +31,60 @@ struct ChatView: View {
 
                 // Message list + input using safeAreaInset
                 ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            if viewModel.messages.isEmpty {
-                                if let welcome = welcomeData {
-                                    WelcomeCard(data: welcome)
-                                        .padding(.top, 24)
-                                        .id("welcome")
-                                } else if hasLoadedWelcome {
-                                    WelcomeCardEmpty()
-                                        .padding(.top, 24)
-                                        .id("welcome-empty")
-                                } else {
-                                    ProgressView()
-                                        .tint(Theme.accent)
-                                        .padding(.top, 48)
+                    ZStack(alignment: .bottom) {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                if viewModel.messages.isEmpty {
+                                    if let welcome = welcomeData {
+                                        WelcomeCard(data: welcome)
+                                            .padding(.top, 24)
+                                            .id("welcome")
+                                    } else if hasLoadedWelcome {
+                                        WelcomeCardEmpty()
+                                            .padding(.top, 24)
+                                            .id("welcome-empty")
+                                    } else {
+                                        ProgressView()
+                                            .tint(Theme.accent)
+                                            .padding(.top, 48)
+                                    }
                                 }
-                            }
 
-                            ForEach(viewModel.messages) { message in
-                                MessageBubble(message: message)
-                                    .id(message.id)
-                            }
+                                ForEach(viewModel.messages) { message in
+                                    MessageBubble(message: message)
+                                        .id(message.id)
+                                }
 
-                            if viewModel.isLoading {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    if !viewModel.statusLabel.isEmpty {
-                                        Text(viewModel.statusLabel)
-                                            .font(.caption)
-                                            .foregroundStyle(Theme.textSecondary)
+                                if viewModel.isLoading {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        if !viewModel.statusLabel.isEmpty {
+                                            Text(viewModel.statusLabel)
+                                                .font(.caption)
+                                                .foregroundStyle(Theme.textSecondary)
+                                                .padding(.horizontal, 16)
+                                        }
+                                        LoadingDots()
+                                            .frame(maxWidth: .infinity, alignment: .leading)
                                             .padding(.horizontal, 16)
                                     }
-                                    LoadingDots()
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 16)
+                                    .id("loading")
                                 }
-                                .id("loading")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 32)
+                        }
+                        .onChange(of: viewModel.messages.count) {
+                            withAnimation {
+                                if let lastId = viewModel.messages.last?.id {
+                                    proxy.scrollTo(lastId, anchor: .bottom)
+                                }
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .padding(.bottom, 8)
-                    }
-                    .onChange(of: viewModel.messages.count) {
-                        withAnimation {
-                            if let lastId = viewModel.messages.last?.id {
-                                proxy.scrollTo(lastId, anchor: .bottom)
+                        .onChange(of: viewModel.isLoading) {
+                            if viewModel.isLoading {
+                                withAnimation { proxy.scrollTo("loading", anchor: .bottom) }
                             }
-                        }
-                    }
-                    .onChange(of: viewModel.isLoading) {
-                        if viewModel.isLoading {
-                            withAnimation { proxy.scrollTo("loading", anchor: .bottom) }
                         }
                     }
                 }
@@ -99,7 +101,7 @@ struct ChatView: View {
             welcomeData = await viewModel.fetchWelcome()
             hasLoadedWelcome = true
             languageModelService.prewarm()
-            languageModelService.logTokenBudget()
         }
     }
+
 }
