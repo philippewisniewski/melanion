@@ -164,6 +164,9 @@ final class ChatViewModel {
         if let cal = r.caloriesKcal { parts.append("You burned \(cal) calories.") }
         if let elev = r.elevationMetres { parts.append("The route climbed \(elev) metres.") }
         if let cad = r.cadenceSpm { parts.append("Average cadence was \(cad) steps per minute.") }
+        if let splits = r.splitsPerKm, !splits.isEmpty {
+            parts.append("Splits per km: " + splits.joined(separator: ", ") + ".")
+        }
         guard !parts.isEmpty else { return "I couldn't find enough information about that run." }
         return parts.joined(separator: "\n")
     }

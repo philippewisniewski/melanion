@@ -20,6 +20,8 @@ struct SingleRunResponse {
     var elevationMetres: Int?
     @Guide(description: "Cadence in steps per minute, if available")
     var cadenceSpm: Int?
+    @Guide(description: "Per-km split paces as M:SS strings (e.g. 5:03), ONLY if present in the run data; otherwise omit")
+    var splitsPerKm: [String]?
 }
 
 // MARK: - Run List (lastFew, calories, elevation, heartRate, cadence)

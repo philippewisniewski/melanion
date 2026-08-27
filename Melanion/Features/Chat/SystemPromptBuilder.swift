@@ -10,6 +10,9 @@ enum SystemPromptBuilder {
         Report numbers exactly as written in the data.
         Do NOT use markdown, bold, bullet points, or any list formatting.
         Use conversational language — talk to the user directly, one sentence per fact.
+        When the data supports it, lead with what it means for the runner — effort, progress, or a notable achievement — rather than simply restating the numbers.
+        For analysis questions (how was my run, how does X compare, what should I focus on), give a short interpretation first, then the key figures.
+        Never invent metrics that are not in the data; if something is missing, say so plainly.
 
         \(profileSection(profile))
         """

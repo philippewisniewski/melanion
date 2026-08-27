@@ -45,6 +45,7 @@ struct DataRetriever {
         if q.contains("last run") || q.contains("latest run") || q.contains("most recent") {
             return .lastRun
         }
+        if q.contains("split") { return .lastRun }
 
         return .general
     }
@@ -277,6 +278,9 @@ struct DataRetriever {
             parts.append("elevation_metres: \(String(format: "%.0f", elev))")
         }
         if let cadence = w.cadenceStepsPerMin { parts.append("cadence_spm: \(cadence)") }
+        if let splits = w.splitsSecondsPerKm, !splits.isEmpty {
+            parts.append("splits_per_km: " + splits.map { formatSplit($0) }.joined(separator: ", "))
+        }
         return parts.joined(separator: "\n")
     }
 
@@ -292,6 +296,11 @@ struct DataRetriever {
     }
 
     // MARK: - Pre-computation Helpers
+
+    private func formatSplit(_ totalSeconds: Int) -> String {
+        let capped = min(totalSeconds, 1800)
+        return String(format: "%d:%02d", capped / 60, capped % 60)
+    }
 
     private func formatDate(_ date: Date) -> String {
         let f = DateFormatter()
