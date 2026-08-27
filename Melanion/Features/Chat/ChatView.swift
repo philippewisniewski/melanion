@@ -3,25 +3,17 @@ import SwiftUI
 struct ChatView: View {
     @Environment(LanguageModelService.self) private var languageModelService
     @State private var viewModel = ChatViewModel()
-    @State private var welcomeData: WelcomeData?
-    @State private var hasLoadedWelcome = false
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Nav bar
                 HStack {
                     Text("Melanion")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.textPrimary)
                     Spacer()
-                    NavigationLink(destination: SettingsView()) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Theme.textSecondary)
-                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -29,25 +21,16 @@ struct ChatView: View {
 
                 Divider().background(Theme.surface)
 
-                // Message list + input using safeAreaInset
                 ScrollViewReader { proxy in
                     ZStack(alignment: .bottom) {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 if viewModel.messages.isEmpty {
-                                    if let welcome = welcomeData {
-                                        WelcomeCard(data: welcome)
-                                            .padding(.top, 24)
-                                            .id("welcome")
-                                    } else if hasLoadedWelcome {
-                                        WelcomeCardEmpty()
-                                            .padding(.top, 24)
-                                            .id("welcome-empty")
-                                    } else {
-                                        ProgressView()
-                                            .tint(Theme.accent)
-                                            .padding(.top, 48)
-                                    }
+                                    Text("Ask me about your runs.")
+                                        .font(.callout)
+                                        .foregroundStyle(Theme.textSecondary)
+                                        .padding(.top, 40)
+                                        .id("empty")
                                 }
 
                                 ForEach(viewModel.messages) { message in
@@ -98,10 +81,7 @@ struct ChatView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            welcomeData = await viewModel.fetchWelcome()
-            hasLoadedWelcome = true
             languageModelService.prewarm()
         }
     }
-
 }

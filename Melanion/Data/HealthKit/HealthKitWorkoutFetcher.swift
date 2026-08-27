@@ -13,8 +13,23 @@ struct HealthKitWorkoutFetcher {
 
     /// Fetches all running workouts, optionally filtered to those starting on or after `since`.
     /// Returns workouts sorted by startedAt descending.
-    func fetchRunningWorkouts(since: Date? = nil) async throws -> [RunWorkout] {
+    /// When `includeSplits` is true, the most-recent workout's GPS route is fetched and its
+    /// per-km splits are populated (used by single-run / split questions). Kept opt-in so the
+    /// (potentially expensive) route query only runs when needed.
+    func fetchRunningWorkouts(since: Date? = nil, includeSplits: Bool = false) async throws -> [RunWorkout] {
         let pairs = try await fetchRunningWorkoutPairs(since: since)
+        guard !pairs.isEmpty else { return [] }
+
+        if includeSplits, let first = pairs.first {
+            let routeFetcher = HealthKitRouteFetcher()
+            if let routeData = await routeFetcher.fetchRouteData(for: first.raw) {
+                var workouts = pairs.map { $0.mapped }
+                var enriched = first.mapped
+                enriched.splitsSecondsPerKm = routeData.kmSplits.map { $0.splitSeconds }
+                workouts[0] = enriched
+                return workouts
+            }
+        }
         return pairs.map(\.mapped)
     }
 

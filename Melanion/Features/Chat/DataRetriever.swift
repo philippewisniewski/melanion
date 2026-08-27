@@ -6,8 +6,8 @@ struct DataRetriever {
     // MARK: - Public API
 
     func retrieve(for question: String) async -> (data: String, precomputed: String) {
-        let workouts = (try? await HealthKitWorkoutFetcher().fetchRunningWorkouts()) ?? []
         let intent = classify(question)
+        let workouts = (try? await HealthKitWorkoutFetcher().fetchRunningWorkouts(includeSplits: intent.isLastRun)) ?? []
         let data = await formatData(for: intent, workouts: workouts)
         let precomputed = formatPrecomputed(workouts: workouts)
         return (data, precomputed)
@@ -46,6 +46,8 @@ struct DataRetriever {
             return .lastRun
         }
         if q.contains("split") { return .lastRun }
+        if let pace = extractPace(from: q), q.contains("faster") { return .paceFilter(pace, faster: true) }
+        if let pace = extractPace(from: q), q.contains("slower") { return .paceFilter(pace, faster: false) }
 
         return .general
     }
@@ -60,6 +62,17 @@ struct DataRetriever {
         return nil
     }
 
+    private func extractPace(from text: String) -> Int? {
+        let pattern = #"(\d{1,2}):(\d{2})"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let mRange = Range(match.range(at: 1), in: text),
+              let sRange = Range(match.range(at: 2), in: text),
+              let minutes = Int(text[mRange]), let seconds = Int(text[sRange])
+        else { return nil }
+        return minutes * 60 + seconds
+    }
+
     // MARK: - Intent
 
     enum SortAttribute {
@@ -67,7 +80,7 @@ struct DataRetriever {
         case pace
     }
 
-    enum Intent {
+    enum Intent: Equatable {
         case lastRun
         case lastFew(Int)
         case topFew(Int, attribute: SortAttribute)
@@ -81,14 +94,19 @@ struct DataRetriever {
         case streaks
         case heartRate
         case cadence
+        case paceFilter(Int, faster: Bool)
         case recovery
         case trends
         case weeklyMonthly
         case total
         case routes
         case general
-    }
 
+        var isLastRun: Bool {
+            if case .lastRun = self { return true }
+            else { return false }
+        }
+    }
     // MARK: - Data Formatting
 
     private func formatData(for intent: Intent, workouts: [RunWorkout]) async -> String {
@@ -148,8 +166,15 @@ struct DataRetriever {
             guard !withCadence.isEmpty else { return "" }
             return "Runs with cadence:\n" + withCadence.map(formatStructured).joined(separator: "\n---\n")
 
+        case .paceFilter(let threshold, let faster):
+            let filtered = workouts.filter { faster ? ($0.paceSeconds <= threshold) : ($0.paceSeconds >= threshold) }
+            guard !filtered.isEmpty else { return "No runs \(faster ? "faster" : "slower") than \(formatSplit(threshold)) per km on record." }
+            let sorted = filtered.sorted { faster ? ($0.paceSeconds < $1.paceSeconds) : ($0.paceSeconds > $1.paceSeconds) }
+            let lines = sorted.prefix(10).map(formatStructured)
+            return "Runs \(faster ? "faster" : "slower") than \(formatSplit(threshold)) per km:\n" + lines.joined(separator: "\n---\n")
+
         case .recovery:
-            return await formatRecovery(workouts[0].startedAt)
+            return await formatRecoveryRange(recentRunDates(workouts))
 
         case .trends, .weeklyMonthly:
             return formatTrends(workouts)
@@ -223,7 +248,7 @@ struct DataRetriever {
         }
         let recent = workouts.prefix(10).map(formatStructured).joined(separator: "\n---\n")
         let trends = formatTrends(workouts)
-        let recovery = await formatRecovery(workouts[0].startedAt)
+        let recovery = await formatRecoveryRange(recentRunDates(workouts))
         return header + recent + "\n\n" + trends + "\n\n" + recovery
     }
 
@@ -250,17 +275,25 @@ struct DataRetriever {
         return parts.joined(separator: "\n")
     }
 
-    private func formatRecovery(_ runDate: Date) async -> String {
-        let bundles = await HealthKitRecoveryFetcher().fetchRecovery(for: [runDate])
-        guard let bundle = bundles.first else {
-            return "Recovery data: not available for your last run."
+    private func recentRunDates(_ workouts: [RunWorkout]) -> [Date] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
+        let within = workouts.filter { $0.startedAt >= cutoff }
+        return (within.isEmpty ? workouts : within).prefix(10).map { $0.startedAt }
+    }
+
+    private func formatRecoveryRange(_ dates: [Date]) async -> String {
+        let bundles = await HealthKitRecoveryFetcher().fetchRecovery(for: dates)
+        guard !bundles.isEmpty else { return "Recovery data: not available." }
+        var lines = ["Recovery across \(bundles.count) run(s):"]
+        var hrvSum = 0.0, hrvCount = 0, sleepSum = 0.0, sleepCount = 0
+        for b in bundles {
+            let hrv = b.nightBefore.hrvMs ?? b.runDay.hrvMs
+            let sleep = b.nightBefore.sleepDurationHours ?? b.dayAfter.sleepDurationHours
+            if let h = hrv { hrvSum += h; hrvCount += 1; lines.append("\(formatDate(b.runStartedAt)): HRV \(String(format: "%.0f", h)) ms") }
+            if let s = sleep { sleepSum += s; sleepCount += 1; lines.append("\(formatDate(b.runStartedAt)): sleep \(String(format: "%.1f", s)) h") }
         }
-
-        var lines = ["Recovery metrics around \(formatDate(bundle.runStartedAt)):"]
-        lines.append("Night before: " + formatRecoveryWindow(bundle.nightBefore))
-        lines.append("Day of run: " + formatRecoveryWindow(bundle.runDay))
-        lines.append("Day after: " + formatRecoveryWindow(bundle.dayAfter))
-
+        if hrvCount > 0 { lines.append("Average HRV: \(String(format: "%.0f", hrvSum / Double(hrvCount))) ms") }
+        if sleepCount > 0 { lines.append("Average sleep: \(String(format: "%.1f", sleepSum / Double(sleepCount))) h") }
         return lines.joined(separator: "\n")
     }
 

@@ -104,3 +104,25 @@ Q5 (faster than 4:30/km) is not classified as a pace-filter intent — just fall
 | System prompt | SystemPromptBuilder.swift | Added "MUST"/"Do NOT" emphasis, "no markdown or bullet points" rule |
 | Empty state handling | ChatViewModel.swift | Graceful messages when all @Generable fields are nil |
 | Docs updated | README.md, testing.md | Rewritten for @Generable / DataRetriever architecture |
+
+---
+
+## Xcode Build Verification — 2026-08-27
+
+Compiled the app cleanly against the iOS SDK (generic iOS device target) after the strip-down to a two-view Splash → Chat flow and the `@Generable` / `DataRetriever` architecture.
+
+### Compile errors fixed
+- **project.pbxproj:** `HealthKitRouteFetcher.swift` file reference pointed at the project root; corrected to `Melanion/Data/HealthKit/HealthKitRouteFetcher.swift` (SOURCE_ROOT).
+- **HealthKitRouteFetcher.swift:** added `import CoreLocation` (`CLLocation` not in scope).
+- **DataRetriever.swift:** `enum Intent` conformed to `Equatable` (used with `==` at the data-fetch call site).
+- **DataRetriever.swift:** an `extension DataRetriever.Intent` was illegally nested inside `struct DataRetriever`; moved `isLastRun` into the `enum Intent` as a computed property.
+- **HealthKitRouteFetcher.swift:** route sample type set to the valid `HKSeriesType.workoutRoute()` (the only form available in this SDK).
+
+### Warnings resolved (now zero)
+- `HealthKitRouteFetcher.swift` closure captured and mutated `var collected` across a concurrently-executing handler → wrapped accumulation in `OSAllocatedUnfairLock<RouteState>` (also guards against a double `resume`).
+- `appintentsmetadataprocessor` warning ("No AppIntents.framework dependency found") → linked `AppIntents.framework` via `OTHER_LDFLAGS` (also recorded in `project.yml` so it survives XcodeGen regeneration).
+- "All interface orientations must be supported" → declared `UISupportedInterfaceOrientations` / `UISupportedInterfaceOrientations~ipad` explicitly. (`UIRequiresFullScreen` is deprecated in iOS 26, so it was intentionally not used.)
+
+**Result: BUILD SUCCEEDED — zero errors, zero warnings.**
+
+> Note: the app uses Apple's on-device Foundation Model (`FoundationModels` / `SystemLanguageModel`), which requires a physical device at runtime. The simulator does not provide HealthKit or the on-device model, so this verification is a compile/build check only; functional QA is in the 25-question matrix above.

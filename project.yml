@@ -35,6 +35,7 @@ targets:
         DEVELOPMENT_TEAM: ""
         INFOPLIST_FILE: Melanion/Info.plist
         CODE_SIGN_STYLE: Automatic
+        OTHER_LDFLAGS: -framework AppIntents
     dependencies: []
     entitlements:
       path: Melanion/Melanion.entitlements

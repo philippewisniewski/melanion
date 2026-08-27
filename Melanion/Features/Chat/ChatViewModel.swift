@@ -85,7 +85,7 @@ final class ChatViewModel {
         switch intent {
         case .lastRun, .longestRun, .fastestRun, .slowestRun:
             return await streamGenerable(prompt: prompt, type: SingleRunResponse.self, format: formatSingleRun, service: service, messageId: messageId, options: options)
-        case .lastFew, .topFew, .calories, .elevation, .heartRate, .cadence:
+        case .lastFew, .topFew, .calories, .elevation, .heartRate, .cadence, .paceFilter:
             return await streamGenerable(prompt: prompt, type: RunListResponse.self, format: formatRunList, service: service, messageId: messageId, options: options)
         case .trends, .weeklyMonthly:
             return await streamGenerable(prompt: prompt, type: TrendResponse.self, format: formatTrend, service: service, messageId: messageId, options: options)
@@ -246,52 +246,9 @@ final class ChatViewModel {
         return "\(secs) seconds"
     }
 
-    // MARK: - Welcome data
-
-    func fetchWelcome() async -> WelcomeData? {
-        guard let workouts = try? await HealthKitWorkoutFetcher().fetchRunningWorkouts(),
-              let last = workouts.first else {
-            return nil
-        }
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "d MMM yyyy"
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-
-        let streak = Self.computeStreak(from: workouts)
-
-        return WelcomeData(
-            lastRunDate: dateFormatter.string(from: last.startedAt),
-            lastRunDistanceKm: last.distanceKm,
-            lastRunPaceSeconds: last.paceSeconds,
-            currentStreak: streak
-        )
-    }
-
-    private nonisolated static func computeStreak(from workouts: [RunWorkout]) -> Int {
-        let cal = Calendar.current
-        let runDays = Set(workouts.map { cal.startOfDay(for: $0.startedAt) }).sorted(by: >)
-        guard let latest = runDays.first else { return 0 }
-
-        var streak = 0
-        var expected = latest
-        for day in runDays {
-            let diff = cal.dateComponents([.day], from: day, to: expected).day ?? 999
-            if diff <= 1 { streak += 1; expected = day } else { break }
-        }
-        return streak
-    }
-
     // MARK: - Helpers
 
     private func appendError(_ message: String) {
         messages.append(ChatMessage(role: .error, content: message))
     }
-}
-
-struct WelcomeData: Sendable {
-    let lastRunDate: String
-    let lastRunDistanceKm: Double
-    let lastRunPaceSeconds: Int
-    let currentStreak: Int
 }

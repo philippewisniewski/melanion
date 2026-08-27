@@ -18,6 +18,6 @@ struct RunWorkout: Sendable {
     /// Elevation gain — populated from HealthKit during fetch
     let elevationGainMetres: Double?
     /// Per-km split paces in integer seconds (e.g. 303 = 5:03/km), one entry per km of the run.
-    /// Nil until computed from a HealthKit route / GPX file — see DataRetriever.
-    let splitsSecondsPerKm: [Int]? = nil
+    /// Populated from a HealthKit route via HealthKitRouteFetcher; nil when no route exists.
+    var splitsSecondsPerKm: [Int]? = nil
 }
